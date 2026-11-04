@@ -4,8 +4,14 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+// Keep process-startup timing independent from competing GUI loader startups.
+static PROCESS_TEST: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[test]
 fn hook_mode_exits_zero_under_200ms_with_app_down_and_stalled_stdin() {
+    let _serial = PROCESS_TEST
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let root = tempfile::tempdir().unwrap();
     for input in [
         Some(r#"{"session_id":"abc","cwd":"/tmp","prompt":"PRIVATE"}"#),
@@ -46,6 +52,9 @@ fn hook_mode_exits_zero_under_200ms_with_app_down_and_stalled_stdin() {
 
 #[test]
 fn hook_subprocess_delivers_only_metadata_over_the_runtime_socket() {
+    let _serial = PROCESS_TEST
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let root = tempfile::tempdir().unwrap();
     let socket =
         std::os::unix::net::UnixDatagram::bind(root.path().join("kvojps-monitor.sock")).unwrap();
@@ -77,6 +86,9 @@ fn hook_subprocess_delivers_only_metadata_over_the_runtime_socket() {
 
 #[test]
 fn active_socket_still_bounds_stalled_stdin() {
+    let _serial = PROCESS_TEST
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let root = tempfile::tempdir().unwrap();
     let _socket =
         std::os::unix::net::UnixDatagram::bind(root.path().join("kvojps-monitor.sock")).unwrap();
