@@ -856,7 +856,7 @@ it("does not offer credential writes for an unavailable Windows module", async (
   render(Panel, { core: { ...core, connectClaude } });
   await screen.findByRole("region", { name: "IA" });
   await userEvent.click(settingsButton());
-  await userEvent.click(screen.getByRole("button", { name: "IA", exact: true }));
+  await userEvent.click(screen.getByRole("button", { name: /^IA$/ }));
   expect(document.querySelector(".pane.ai")).toHaveTextContent("Indisponível no Windows nesta versão de validação.");
   expect(connectClaude).not.toHaveBeenCalled();
 });
