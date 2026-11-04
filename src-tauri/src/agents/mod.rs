@@ -279,7 +279,15 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
                 .map(|s| (s, true))
                 .collect()
         });
-        if let Some(result) = observation.codex {
+        // A missing adapter cannot confirm that a hook-only session has ended.
+        // Keep its last observation under the same unavailable-source policy.
+        let codex = observation.codex.or_else(|| {
+            self.sessions
+                .iter()
+                .any(|s| s.provider == Provider::Codex)
+                .then_some(Err(()))
+        });
+        if let Some(result) = codex {
             match result {
                 Ok(records) => sessions.extend(records),
                 Err(()) => {

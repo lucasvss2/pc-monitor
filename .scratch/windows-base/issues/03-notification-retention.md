@@ -27,3 +27,9 @@ A composição Windows ainda não tem adaptador de polling Codex. `Observation.c
 ## Comments
 
 Teste de regressão acrescentado antes da correção; execução pela CI, pois a instalação temporária Rust foi removida na limpeza anterior. Nenhuma política de segurança foi alterada. A consulta inicialmente gravada como script PowerShell foi recusada pela política de arquivos; as leituras seguintes usaram comandos permitidos sem alterar a política nem usar ExecutionPolicy Bypass.
+
+### Vermelho no núcleo e correção
+
+A [CI de dd811c9](https://github.com/lucasvss2/pc-monitor/actions/runs/41848146566) confirmou a falha funcional nos dois SOs: `codex_hook_without_polling_is_not_closed_by_an_unrelated_claude_read` encontrou zero sessões quando esperava uma. Os demais testes do núcleo passaram. As rodadas anteriores pararam em formatação e não foram usadas como evidência funcional.
+
+A ausência de adaptador passa a reutilizar o tratamento de fonte indisponível quando há observação Codex anterior: conserva o último estado em memória, marca falha de consulta e mantém last_success_at anterior. Uma resposta válida do adaptador continua autoritativa, e SessionEnd explícito continua removendo sessão e notificação. O teste também verifica que a leitura Claude encerra sua própria sessão sem encerrar a do outro provedor.
