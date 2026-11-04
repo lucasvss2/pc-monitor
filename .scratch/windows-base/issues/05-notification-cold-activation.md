@@ -21,3 +21,11 @@ Testes de argumentos e Registro isolado protegem os novos limites, mas não subs
 Evidência registrada somente como resultados, categorias e códigos públicos de API. Caminhos pessoais, nomes de sessão/projeto e capturas brutas ficaram fora do Git. O payload de validação é sintético. Revisão do diff e metadados de commit obrigatória antes do push.
 
 [Esquema de notificações](https://learn.microsoft.com/en-us/windows/apps/develop/notifications/app-notifications/app-notifications-schema), [identidade de app desktop por atalho](https://learn.microsoft.com/en-us/windows/win32/shell/enable-desktop-toast-with-appusermodelid). A preservação do alerta após falha de consulta é tratada separadamente no ticket 03.
+
+## Progresso da validação
+
+A [CI de cffd77f](https://github.com/lucasvss2/pc-monitor/actions/runs/41867458322) passou Ubuntu e Windows, incluindo parsing restrito, Registro isolado, cofre real e hook no EXE GUI de release. O primeiro run parou no rustfmt por ordem de imports, corrigida no segundo commit.
+
+Na máquina Windows 11, o processo e a associação foram conferidos contra o hash do artefato dessa CI; o atalho temporário foi atualizado depois de verificar a propriedade e remover somente a cópia de teste anterior. ShellExecuteW iniciou o EXE correto com processo inicialmente encerrado e argumentos fixos conferidos. A automação não encontrou o Painel visível nas sondas por script, inclusive ao repetir com processo ativo. Esse resultado não comprova ativação gráfica: comparar com o Indicador e repetir o clique humano na notificação antes de concluir ou atribuir a causa a foco, setup ou criação do WebView. Nenhuma proteção foi alterada.
+
+O EXE GUI aprovado foi executado com três ativações inválidas sintéticas: parâmetro de sessão, argumento extra e URL externa. As três encerraram com código zero e stdout/stderr vazios antes do início da aplicação. A proteção não depende apenas do teste unitário do parser. O aceite de apresentação do Painel continua pendente.
