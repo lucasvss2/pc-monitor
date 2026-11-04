@@ -161,34 +161,38 @@ impl HookSocket for UnixHookSocket {
 pub struct TimedStdin;
 impl HookInput for TimedStdin {
     fn read(&mut self, budget_ms: u64, limit: usize) -> io::Result<String> {
-        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(budget_ms);
-        let mut input = Vec::new();
-        loop {
-            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
-            if remaining.is_zero() {
-                return Err(io::ErrorKind::TimedOut.into());
-            }
-            let mut descriptor = libc::pollfd {
-                fd: 0,
-                events: libc::POLLIN,
-                revents: 0,
-            };
-            // The fixed deadline bounds poll; read consumes only ready stdin bytes.
-            if unsafe { libc::poll(&mut descriptor, 1, remaining.as_millis() as i32) } <= 0 {
-                return Err(io::ErrorKind::TimedOut.into());
-            }
-            let mut buffer = [0u8; 8192];
-            let length = unsafe { libc::read(0, buffer.as_mut_ptr().cast(), buffer.len()) };
-            if length < 0 {
-                return Err(io::Error::last_os_error());
-            }
-            if length == 0 {
-                return String::from_utf8(input).map_err(io::Error::other);
-            }
-            input.extend_from_slice(&buffer[..length as usize]);
-            if input.len() > limit {
-                return Err(io::ErrorKind::InvalidData.into());
-            }
+        read_hook_input(0, budget_ms, limit)
+    }
+}
+
+fn read_hook_input(fd: libc::c_int, budget_ms: u64, limit: usize) -> io::Result<String> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(budget_ms);
+    let mut input = Vec::new();
+    loop {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            return Err(io::ErrorKind::TimedOut.into());
+        }
+        let mut descriptor = libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        // The fixed deadline bounds poll; read consumes only ready stdin bytes.
+        if unsafe { libc::poll(&mut descriptor, 1, remaining.as_millis() as i32) } <= 0 {
+            return Err(io::ErrorKind::TimedOut.into());
+        }
+        let mut buffer = [0u8; 8192];
+        let length = unsafe { libc::read(fd, buffer.as_mut_ptr().cast(), buffer.len()) };
+        if length < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        if length == 0 {
+            return String::from_utf8(input).map_err(io::Error::other);
+        }
+        input.extend_from_slice(&buffer[..length as usize]);
+        if input.len() > limit {
+            return Err(io::ErrorKind::InvalidData.into());
         }
     }
 }
@@ -239,6 +243,16 @@ pub fn space(path: &std::path::Path) -> io::Result<Space> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_hook_input_times_out_without_waiting_for_eof() {
+        use std::os::fd::AsRawFd;
+        let (reader, _writer) = std::os::unix::net::UnixStream::pair().unwrap();
+        let start = std::time::Instant::now();
+        let error = read_hook_input(reader.as_raw_fd(), 100, 65536).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+        assert!(start.elapsed() < std::time::Duration::from_millis(200));
+    }
 
     #[test]
     fn file_watch_sees_a_replaced_file_once_and_ignores_its_neighbours() {
