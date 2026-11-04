@@ -30,3 +30,11 @@ WebView2 instalado. Sem evento de crash nem bloqueio de Code Integrity correspon
 ## Comments
 
 Marcadores temporários registram somente etapa, evento de carregamento e presença na thread principal; nenhum caminho, URL ou conteúdo de sessão. Compilação continua pela CI devido ao bloqueio anterior dos build scripts locais. Nenhum cenário de notificação, cofre gráfico, início automático ou suspensão foi aprovado nesta rodada.
+
+### Diagnóstico nativo
+
+A CI de `461ad48` passou nos dois SOs. No Windows 11, a segunda abertura produziu, em ordem: `open entered main=true`, `state ready`, `build starting`, `build finished`, `close entered`. Nenhum evento de carregamento da página ocorreu antes do fechamento. A segunda execução encerrou e apenas uma instância permaneceu.
+
+A criação não ficou presa no builder nesta reprodução. O caminho de perda de foco fechou a janela ainda oculta, antes do `PageLoadEvent::Finished` que a apresentaria. A correção em avaliação ignora `Focused(false)` no Windows enquanto a janela está invisível; eventos após apresentação conservam o comportamento existente. O restante dos callbacks não foi alterado.
+
+Não há seam automatizado atual que atravesse criação WebView2, mensagens reais de foco e carregamento da página. Um teste unitário de booleanos não reproduziria a falha. A regressão nesta etapa é o loop nativo original, complementado por clique real e reabertura após perda de foco; a lacuna de automação gráfica permanece explícita.

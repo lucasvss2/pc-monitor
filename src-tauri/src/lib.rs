@@ -123,7 +123,14 @@ pub fn run() {
             }
             match event {
                 // Close the panel on focus loss, like a top bars menu.
-                WindowEvent::Focused(false) => panel::close(window.app_handle()),
+                WindowEvent::Focused(false) => {
+                    // WebView2 can report focus loss while the new panel is still
+                    // hidden. PageLoadEvent::Finished owns its first presentation.
+                    if cfg!(windows) && !window.is_visible().unwrap_or(false) {
+                        return;
+                    }
+                    panel::close(window.app_handle());
+                }
                 WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     panel::close(window.app_handle());
