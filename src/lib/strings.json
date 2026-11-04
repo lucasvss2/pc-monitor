@@ -70,6 +70,8 @@
     "codexPlan": "Codex detectado · plano {plan}"
   },
   "header": {
+    "closePanel": "Fechar Painel",
+    "closePanelHint": "Fechar Painel e manter o Indicador ativo",
     "updated": "atualizado {time}",
     "noData": "sem dados ainda"
   },

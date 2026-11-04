@@ -286,6 +286,9 @@
     <div class="bridge"><span></span><span></span><span></span><div class="signature"><strong>KVOJPS</strong></div></div>
     <div class="utility">
       <button class="settings" aria-current={area === "settings" ? "page" : undefined} onclick={() => openSettings()}><span aria-hidden="true">⚙</span> {t.settings.title}</button>
+      <button class="close" aria-label={t.header.closePanel} title={t.header.closePanelHint} onclick={() => core.closePanel()}>
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
     </div>
   </header>
 
@@ -329,11 +332,13 @@
   .bridge span { background: var(--band-lavender); flex: 2; border-radius: 15px 0 0 0; }
   .bridge span:nth-child(2) { background: var(--band-cyan); flex: 5; border-radius: 0; }
   .bridge span:nth-of-type(3) { background: var(--band-amber); flex: 1; border-radius: 0 12px 12px 0; }
-  .utility { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 6px; min-height: 24px; }
+  .utility { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 6px; min-height: 28px; }
   .settings { display: flex; align-items: center; gap: 7px; font-size: 13px; }
   .settings span { font-size: 16px; line-height: 1; }
   .settings[aria-current] { color: var(--accent); }
-  .settings:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .settings:focus-visible, .close:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .close { display: grid; place-items: center; width: 34px; height: 28px; padding: 0; border: 1px solid var(--control-line); border-radius: 4px; background: var(--surface); }
+  .close:hover { color: var(--accent); border-color: var(--accent); background: var(--surface-2); }
   .workspace { position: relative; flex: 1; min-height: 0; }
   .scroller { height: 100%; overflow: auto; }
   .scroller.covered { visibility: hidden; }
