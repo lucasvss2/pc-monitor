@@ -208,22 +208,43 @@ impl HookInput for TimedStdin {
         // The hook subprocess exits after the deadline, also ending a blocked reader.
         let (send, receive) = std::sync::mpsc::sync_channel(1);
         std::thread::spawn(move || {
-            use std::io::Read;
-            let mut bytes = Vec::new();
-            let result = std::io::stdin()
-                .take(limit as u64 + 1)
-                .read_to_end(&mut bytes)
-                .and_then(|_| {
-                    if bytes.len() > limit {
-                        return Err(io::ErrorKind::InvalidData.into());
-                    }
-                    String::from_utf8(bytes).map_err(|_| io::ErrorKind::InvalidData.into())
-                });
+            let result = read_stdin(limit).and_then(|bytes| {
+                String::from_utf8(bytes).map_err(|_| io::ErrorKind::InvalidData.into())
+            });
             let _ = send.send(result);
         });
         receive
             .recv_timeout(std::time::Duration::from_millis(budget_ms))
             .map_err(|_| io::Error::from(io::ErrorKind::TimedOut))?
+    }
+}
+
+/// Rust's GUI-subsystem standard stream can be empty even with an inherited
+/// redirected handle. Borrow the real Windows stdin; never close its handle.
+fn read_stdin(limit: usize) -> io::Result<Vec<u8>> {
+    use windows::Win32::System::Console::{GetStdHandle, STD_INPUT_HANDLE};
+    let input = unsafe { GetStdHandle(STD_INPUT_HANDLE) }.map_err(|_| failure())?;
+    if input.is_invalid() {
+        return Err(failure());
+    }
+    let mut bytes = Vec::new();
+    loop {
+        let mut buffer = [0u8; 8192];
+        let size = buffer
+            .len()
+            .min(limit.saturating_sub(bytes.len()).saturating_add(1));
+        let mut count = 0;
+        match unsafe { ReadFile(input, Some(&mut buffer[..size]), Some(&mut count), None) } {
+            Ok(()) if count == 0 => return Ok(bytes),
+            Ok(()) => {
+                bytes.extend_from_slice(&buffer[..count as usize]);
+                if bytes.len() > limit {
+                    return Err(io::ErrorKind::InvalidData.into());
+                }
+            }
+            Err(error) if error.code() == ERROR_BROKEN_PIPE.to_hresult() => return Ok(bytes),
+            Err(_) => return Err(failure()),
+        }
     }
 }
 

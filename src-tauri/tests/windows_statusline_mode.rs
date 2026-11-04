@@ -17,7 +17,7 @@ fn run_wrapper(bash: Option<&str>) {
         .unwrap_or_else(|| env!("CARGO_BIN_EXE_kvojps-monitor").into());
     std::fs::copy(binary, &executable).unwrap();
     let cache = root.path().join("limits.json");
-    let wrapper = root.path().join("status line.ps1");
+    let wrapper = root.path().join("status line.json");
     // The previous command verifies every input byte, including trailing LF and
     // Unicode, then emits ANSI output which must be preserved byte-for-byte.
     let payload = "{\"rate_limits\":{\"five_hour\":{\"used_percentage\":23,\"resets_at\":2000000000}},\"prompt\":\"PRIVATE_PROMPT_á\",\"token\":\"PRIVATE_TOKEN\"}\n";

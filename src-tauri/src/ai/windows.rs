@@ -113,39 +113,11 @@ pub fn literal(text: &str) -> String {
 }
 
 pub fn command(wrapper: &str) -> String {
-    format!(
-        "powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand {}",
-        encoded(&format!("& {}", literal(wrapper)))
-    )
-}
-
-pub fn wrapper(
-    executable: &str,
-    cache: &str,
-    original: Option<&str>,
-    bash: Option<&str>,
-) -> String {
-    let original = original
-        .map(|original| match bash {
-            Some(bash) => format!(
-                "Invoke-StatusCommand {} {} $payload $true",
-                literal(bash),
-                literal(&format!("-c {}", windows_arg(original)))
-            ),
-            None => format!(
-                "Invoke-StatusCommand 'powershell.exe' {} $payload $true",
-                literal(&format!(
-                    "-NoLogo -NoProfile -NonInteractive -EncodedCommand {}",
-                    encoded(original)
-                ))
-            ),
-        })
-        .unwrap_or_default();
-    // stdin/stdout are byte streams: no PowerShell pipeline conversion, extra
-    // newlines or ANSI stripping. Only the Rust helper projects cache fields.
-    format!(
-        r#"﻿# kvojps-monitor: disconnect in the app to restore the previous status line.
-$ErrorActionPreference = 'Stop'
+    // The generated command reads JSON data, never a script from disk. This
+    // works under Restricted without changing execution policy or using Bypass.
+    let script = format!(
+        r#"$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 function Invoke-StatusCommand($file, $arguments, $payload, $show) {{
     $info = New-Object System.Diagnostics.ProcessStartInfo
     $info.FileName = $file
@@ -165,11 +137,12 @@ function Invoke-StatusCommand($file, $arguments, $payload, $show) {{
         $child.StandardInput.BaseStream.Write($payload, 0, $payload.Length)
         $child.StandardInput.Close()
         if (!$child.WaitForExit(2000)) {{ $child.Kill(); $child.WaitForExit(); return }}
-        $copy.GetAwaiter().GetResult()
+        [void]$copy.GetAwaiter().GetResult()
         if ($show) {{ $bytes = $output.ToArray(); [Console]::OpenStandardOutput().Write($bytes, 0, $bytes.Length) }}
     }} catch {{ }} finally {{ $child.Dispose() }}
 }}
 try {{
+    $config = [IO.File]::ReadAllText({config}) | ConvertFrom-Json
     $stream = [Console]::OpenStandardInput()
     $buffer = New-Object byte[] 8192
     $inputCopy = New-Object System.IO.MemoryStream
@@ -178,15 +151,41 @@ try {{
         $inputCopy.Write($buffer, 0, $count)
     }}
     $payload = $inputCopy.ToArray()
-    Invoke-StatusCommand {executable} {arguments} $payload $false
-    {original}
+    Invoke-StatusCommand $config.executable $config.arguments $payload $false
+    if ($null -ne $config.original) {{
+        Invoke-StatusCommand $config.original.file $config.original.arguments $payload $true
+    }}
 }} catch {{ }}
 "#,
-        executable = literal(executable),
-        arguments = literal(&format!("statusline {}", windows_arg(cache))),
+        config = literal(wrapper),
+    );
+    format!(
+        "powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand {}",
+        encoded(&script)
     )
 }
 
+pub fn wrapper(
+    executable: &str,
+    cache: &str,
+    original: Option<&str>,
+    bash: Option<&str>,
+) -> String {
+    let original = original.map(|original| match bash {
+        Some(bash) => {
+            serde_json::json!({"file": bash, "arguments": format!("-c {}", windows_arg(original))})
+        }
+        None => serde_json::json!({"file": "powershell.exe", "arguments": format!(
+            "-NoLogo -NoProfile -NonInteractive -EncodedCommand {}", encoded(original)
+        )}),
+    });
+    serde_json::json!({
+        "executable": executable,
+        "arguments": format!("statusline {}", windows_arg(cache)),
+        "original": original,
+    })
+    .to_string()
+}
 /// CommandLineToArgvW quoting for an argument passed directly to a native exe.
 fn windows_arg(text: &str) -> String {
     let mut result = String::from("\"");

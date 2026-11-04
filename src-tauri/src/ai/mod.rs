@@ -748,7 +748,7 @@ pub fn start(app: tauri::AppHandle) {
             #[cfg(windows)]
             wrapper: path(
                 dirs::data_local_dir(),
-                "kvojps-monitor/claude-statusline.ps1",
+                "kvojps-monitor/claude-statusline-command.json",
             ),
             cache: path(dirs::cache_dir(), "kvojps-monitor/claude-statusline.json"),
             // An AppImage runs from a temporary mount: point at the AppImage file.
