@@ -1,7 +1,7 @@
 # Base Windows, cofre, hooks e notificações
 
-Status: ready-for-agent
-Assignee: Codex
+Status: ready-for-human
+Assignee: maintainer
 Parent: ../spec.md
 
 ## Escopo
@@ -39,3 +39,21 @@ Os testes usam entradas sintéticas e fixtures existentes sanitizadas, sem modif
 Após falhas internas no envio, a branch `codex/windows-native-validation` foi criada pela API com árvore idêntica à local, sem force-push ou remoção de commits. As branches de pesquisa/protótipo permaneceram locais. Os envios seguintes usam a autenticação já disponível no CLI, sem reconfiguração global do Git.
 
 Pendências de aceite: sessão gráfica Windows 11 x64 para bandeja, foco, eventos reais das CLIs, banner e Central de Notificações, reinício e suspensão/retomada; regressão gráfica Ubuntu. [Roteiro de validação](../../../docs/windows-validacao.md). A descoberta de sessões Windows continua explicitamente parcial e o mínimo completo não é declarado implementado.
+
+### Validação do executável e estabilização da prova Linux — 04/11/2026
+
+A [rodada 7cb78cd](https://github.com/lucasvss2/pc-monitor/actions/runs/41828895096/job/126570641086) passou integralmente no Windows, incluindo o teste do hook no EXE de release GUI. O artefato temporário dessa rodada foi inspecionado sem execução local: PE x64, subsistema GUI, tabela de certificados ausente, 9.512.960 bytes e SHA-256 `1ed90811d01b9d3bedb40031ce3724ac3cfb1ebde9cabe6bd9895096d0383d44`. Essa inspeção comprova o formato e a ausência de assinatura embutida, sem garantir execução sob políticas de segurança.
+
+Na mesma rodada e numa repetição anterior, os testes Linux de tempo total de subprocesso falharam de forma intermitente. Serializar as três inicializações resolveu parte das falhas, mas a primeira carga GUI ainda consumiu cerca de 264 ms com stdin travado. A prova foi separada: a leitura nativa conserva 100 ms e tem teste direto com descritor local aberto, verificado abaixo de 200 ms; o processo completo segue o orçamento externo Linux já existente de um segundo. O teste mata/recolhe o filho ao exceder esse orçamento. Nenhum timeout de produção Linux foi ampliado, nem foram retiradas as verificações de silêncio e conteúdo.
+
+O [job Ubuntu de 0e56529](https://github.com/lucasvss2/pc-monitor/actions/runs/41831439481/job/126579341890) passou: 381 testes de UI, 307 testes do núcleo, três testes de subprocesso, 15 testes de fixtures, fmt, clippy e build Tauri. As evidências não incluem eventos reais de CLIs nem uma sessão gráfica.
+
+### Resultado do incremento — pronto para aceite manual
+
+A [CI de 0e56529](https://github.com/lucasvss2/pc-monitor/actions/runs/41831439481) passou integralmente em Ubuntu 24.04 e no runner Windows 2025. Windows: 381 testes de UI, 240 do núcleo, prova separada do cofre real, teste de hook debug, 12 testes de fixtures, fmt/clippy, build e repetição do hook no EXE GUI de release. Ubuntu: os resultados completos estão acima. A prova COM verifica dispatch e destino; não comprova entrega nem clique real pelo banner ou Central.
+
+[Artefato experimental sem assinatura](https://github.com/lucasvss2/pc-monitor/actions/runs/41831439481/artifacts/13323004402), temporário até 11/11/2026: PE x64/GUI, tabela de certificados ausente, 9.512.960 bytes; SHA-256 do EXE `db47c203ad057bbec236cb66522c63259f525a9140402db70acdd83c567c0768`. Inspecionado sem execução local. A CI usou a fonte `0e56529238558d4c965d59db5e8f4bc05d5541a9`; o commit seguinte registra apenas esta evidência e dispensa nova rodada de build.
+
+O ticket passa a `ready-for-human` exclusivamente para os cenários gráficos do roteiro, eventos reais das CLIs e regressão gráfica Ubuntu ainda pendentes. Não representa aceite total do incremento nem suporte oficial Windows. A implementação posterior de descoberta/status line, demais Módulos, Jira, instalação e Painel/relógio conserva o escopo e a ordem da especificação aprovada.
+
+Revisão de publicação final: diffs do incremento e evidências em `.scratch/`/`docs/` revisados; apenas fixtures existentes sanitizadas e entradas sintéticas, sem configurações pessoais ou conteúdo real de sessões. O artefato ficou fora da árvore Git; somente a branch `codex/windows-native-validation` recebeu estes commits, com identidade noreply. Nenhuma política de segurança, configuração global Git ou branch de pesquisa/protótipo foi alterada para concluir a validação.
