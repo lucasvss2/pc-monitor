@@ -1,6 +1,6 @@
 # Desligar início automático falha no Windows
 
-Status: ready-for-agent
+Status: ready-for-human
 Assignee: Codex
 Parent: ../spec.md
 

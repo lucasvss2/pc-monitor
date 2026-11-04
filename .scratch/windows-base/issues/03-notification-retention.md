@@ -1,6 +1,6 @@
 # Notificação Codex removida pela ausência de consulta periódica
 
-Status: ready-for-agent
+Status: ready-for-human
 Assignee: Codex
 Parent: ../spec.md
 
@@ -33,3 +33,9 @@ Teste de regressão acrescentado antes da correção; execução pela CI, pois a
 A [CI de dd811c9](https://github.com/lucasvss2/pc-monitor/actions/runs/41848146566) confirmou a falha funcional nos dois SOs: `codex_hook_without_polling_is_not_closed_by_an_unrelated_claude_read` encontrou zero sessões quando esperava uma. Os demais testes do núcleo passaram. As rodadas anteriores pararam em formatação e não foram usadas como evidência funcional.
 
 A ausência de adaptador passa a reutilizar o tratamento de fonte indisponível quando há observação Codex anterior: conserva o último estado em memória, marca falha de consulta e mantém last_success_at anterior. Uma resposta válida do adaptador continua autoritativa, e SessionEnd explícito continua removendo sessão e notificação. O teste também verifica que a leitura Claude encerra sua própria sessão sem encerrar a do outro provedor.
+
+### Resultado nativo e reversão
+
+A CI de dce742a passou nos dois SOs. O probe nativo encontrou uma nova tag, mantida ao final de quatro segundos, sem sentinelas de conteúdo. O último EXE cffd77f preserva a correção e passou a regressão na CI Ubuntu/Windows. Na sessão gráfica, banner e Central abriram Agentes; ambos preservaram a Âncora controlada. A prova não acrescenta descoberta de processos vivos nem consulta periódica Codex completa.
+
+Ao terminar os testes de hooks, o usuário desligou Detecção instantânea. O manifesto foi removido; o arquivo preexistente corresponde ao hash semântico inicial e o arquivo originalmente ausente voltou a ficar ausente. Só diretórios criados pelo teste e vazios foram removidos. Artefatos substituídos foram apagados. A limpeza final do EXE e da identidade foi concluída no fechamento desta sessão, registrada no ticket 05.
