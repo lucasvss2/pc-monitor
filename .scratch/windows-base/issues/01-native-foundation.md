@@ -57,3 +57,7 @@ A [CI de 0e56529](https://github.com/lucasvss2/pc-monitor/actions/runs/418314394
 O ticket passa a `ready-for-human` exclusivamente para os cenários gráficos do roteiro, eventos reais das CLIs e regressão gráfica Ubuntu ainda pendentes. Não representa aceite total do incremento nem suporte oficial Windows. A implementação posterior de descoberta/status line, demais Módulos, Jira, instalação e Painel/relógio conserva o escopo e a ordem da especificação aprovada.
 
 Revisão de publicação final: diffs do incremento e evidências em `.scratch/`/`docs/` revisados; apenas fixtures existentes sanitizadas e entradas sintéticas, sem configurações pessoais ou conteúdo real de sessões. O artefato ficou fora da árvore Git; somente a branch `codex/windows-native-validation` recebeu estes commits, com identidade noreply. Nenhuma política de segurança, configuração global Git ou branch de pesquisa/protótipo foi alterada para concluir a validação.
+
+### Início do aceite gráfico — 04/11/2026
+
+Indicador visível confirmado pelo usuário, mas o Painel não abriu no clique esquerdo nem na segunda execução. Aceite interrompido antes dos cenários dependentes. Diagnóstico em [Painel Windows não abre pelo Indicador](02-panel-opening.md); os resultados automáticos anteriores continuam válidos, sem substituir este cenário reprovado.
