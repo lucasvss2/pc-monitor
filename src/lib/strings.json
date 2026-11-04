@@ -23,7 +23,8 @@
     "github": "GitHub",
     "trello": "Trello",
     "network": "Rede",
-    "system": "Sistema"
+    "system": "Sistema",
+    "tasks": "Tarefas"
   },
   "settings": {
     "title": "Configurações",
@@ -455,14 +456,15 @@
       "cancelled": "Teste de velocidade cancelado."
     },
     "movement": {
-      "running": "Movendo card…",
-      "succeeded": "Card movido.",
+      "running": "Alterando tarefa…",
+      "succeeded": "Alteração confirmada.",
       "failed": "Falha ao mover card. Confira o Módulo.",
       "recovered": "Movimentação restabelecida.",
       "paused": "Movimentação pausada. Confira o Módulo.",
       "unavailable": "Movimentação indisponível. Confira o Módulo.",
       "cancelled": "Movimentação cancelada.",
-      "attention": "Atenção. Confira o Módulo."
+      "attention": "Atenção. Confira o Módulo.",
+      "unconfirmed": "Resultado não confirmado. Atualize antes de repetir."
     },
     "messages": {
       "running": "Estabelecendo enlace…",
@@ -472,7 +474,8 @@
       "paused": "Atualização pausada. Confira o Módulo.",
       "unavailable": "Atualização indisponível. Confira o Módulo.",
       "cancelled": "Operação cancelada.",
-      "attention": "Atenção. Confira o Módulo."
+      "attention": "Atenção. Confira o Módulo.",
+      "unconfirmed": "Resultado não confirmado. Atualize antes de repetir."
     },
     "agents": {
       "waiting": "Aguardando você",

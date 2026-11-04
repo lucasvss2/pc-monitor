@@ -64,7 +64,7 @@ it("cancels a closed opening and starts a new sequence on remount", async () => 
   await act(() => vi.advanceTimersByTimeAsync(0));
   first.unmount();
   const second = render(PanelOpening, { core: core(async () => initial) });
-  await act(async () => resolve({ lastAnchor: "trello", snapshots: [] }));
+  await act(async () => resolve({ lastAnchor: "tasks", snapshots: [] }));
   await act(() => vi.advanceTimersByTimeAsync(1199));
   expect(screen.queryByRole("region", { name: "GitHub" })).not.toBeInTheDocument();
   await act(() => vi.advanceTimersByTimeAsync(1));

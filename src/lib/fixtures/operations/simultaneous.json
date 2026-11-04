@@ -1,8 +1,74 @@
 [
-  {"module":"ai","updatedAt":null,"data":{"operation":{"id":1,"origin":"user","state":"running"},"prompt":"SENTINEL_PROMPT"}},
-  {"module":"agents","updatedAt":null,"data":{"operation":{"id":1,"origin":"automatic","state":"attention"},"session":"SENTINEL_SESSION","branch":"SENTINEL_BRANCH"}},
-  {"module":"github","updatedAt":null,"data":{"operation":{"id":1,"origin":"automatic","state":"failed"},"token":"SENTINEL_TOKEN","commit":"SENTINEL_COMMIT"}},
-  {"module":"trello","updatedAt":null,"data":{"operation":{"id":1,"origin":"automatic","state":"paused"},"card":"SENTINEL_CARD"}},
-  {"module":"network","updatedAt":null,"data":{"speedOperation":{"id":1,"origin":"user","state":"cancelled"}}},
-  {"module":"system","updatedAt":null,"data":{"operation":{"id":1,"origin":"automatic","state":"recovered"}}}
+  {
+    "module": "ai",
+    "updatedAt": null,
+    "data": {
+      "operation": {
+        "id": 1,
+        "origin": "user",
+        "state": "running"
+      },
+      "prompt": "SENTINEL_PROMPT"
+    }
+  },
+  {
+    "module": "agents",
+    "updatedAt": null,
+    "data": {
+      "operation": {
+        "id": 1,
+        "origin": "automatic",
+        "state": "attention"
+      },
+      "session": "SENTINEL_SESSION",
+      "branch": "SENTINEL_BRANCH"
+    }
+  },
+  {
+    "module": "github",
+    "updatedAt": null,
+    "data": {
+      "operation": {
+        "id": 1,
+        "origin": "automatic",
+        "state": "failed"
+      },
+      "token": "SENTINEL_TOKEN",
+      "commit": "SENTINEL_COMMIT"
+    }
+  },
+  {
+    "module": "tasks",
+    "updatedAt": null,
+    "data": {
+      "operation": {
+        "id": 1,
+        "origin": "automatic",
+        "state": "paused"
+      },
+      "card": "SENTINEL_CARD"
+    }
+  },
+  {
+    "module": "network",
+    "updatedAt": null,
+    "data": {
+      "speedOperation": {
+        "id": 1,
+        "origin": "user",
+        "state": "cancelled"
+      }
+    }
+  },
+  {
+    "module": "system",
+    "updatedAt": null,
+    "data": {
+      "operation": {
+        "id": 1,
+        "origin": "automatic",
+        "state": "recovered"
+      }
+    }
+  }
 ]

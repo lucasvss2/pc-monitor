@@ -86,7 +86,7 @@ describe("Compact panel", () => {
     await screen.findByRole("region", { name: "IA" });
     expect(section("IA").parentElement).toBe(section("Agentes").parentElement);
     expect(Array.from(document.querySelectorAll("section[data-module]")).map((s) => s.id))
-      .toEqual(["module-ai", "module-agents", "module-github", "module-network", "module-trello", "module-system"]);
+      .toEqual(["module-ai", "module-agents", "module-github", "module-network", "module-tasks", "module-system"]);
     expect(screen.queryByRole("navigation", { name: "Módulos" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(settingsButton()).toBeInTheDocument();
@@ -109,8 +109,8 @@ describe("Compact panel", () => {
     expect(container.querySelector(".code")).toBeNull();
     expect(within(section("Rede")).queryByText("NetworkManager e kernel")).not.toBeInTheDocument();
     expect(within(section("Rede")).getByRole("heading", { level: 2, name: "Rede" })).toBeInTheDocument();
-    expect(within(section("Trello")).getByRole("heading", { level: 2, name: "Trello" })).toBeInTheDocument();
-    expect(within(section("Trello")).queryByText("sem dados ainda")).not.toBeInTheDocument();
+    expect(within(section("Tarefas")).getByRole("heading", { level: 2, name: "Tarefas" })).toBeInTheDocument();
+    expect(within(section("Tarefas")).queryByText("sem dados ainda")).not.toBeInTheDocument();
     expect(within(section("Sistema")).getByRole("heading", { level: 2, name: "Sistema" })).toBeInTheDocument();
     expect(within(section("Sistema")).queryByText(/Kernel e UPower|atualizado/)).not.toBeInTheDocument();
   });
@@ -120,9 +120,9 @@ describe("Compact panel", () => {
     render(Panel, { core });
     expect(await within(await screen.findByRole("region", { name: "Sistema" })).findByRole("group", { name: "CPU" })).toHaveTextContent("2%");
 
-    await publish({ module: "trello", updatedAt: new Date(2026, 9, 30, 9, 5).getTime(), data: trelloFull });
+    await publish({ module: "tasks", updatedAt: new Date(2026, 9, 30, 9, 5).getTime(), data: trelloFull });
 
-    expect(within(section("Trello")).getByText("17 cards · 8 listas")).toBeInTheDocument();
+    expect(within(section("Tarefas")).getByText("17 cards · 8 listas")).toBeInTheDocument();
     expect(within(section("Sistema")).getByRole("group", { name: "CPU" })).toHaveTextContent("2%");
   });
 
@@ -152,11 +152,11 @@ describe("Panel navigation", () => {
   it("remembers the module reached through its local actions", async () => {
     const { core } = fakeCore();
     render(Panel, { core });
-    const trello = await screen.findByRole("region", { name: "Trello" });
-    await userEvent.click(within(trello).getByRole("button", { name: "Configurar Trello" }));
+    const trello = await screen.findByRole("region", { name: "Tarefas" });
+    await userEvent.click(within(trello).getByRole("button", { name: "Configurar Tarefas" }));
     await userEvent.click(screen.getByRole("button", { name: "Voltar ao Painel" }));
-    expect(core.chooseAnchor).toHaveBeenLastCalledWith("trello");
-    expect(within(trello).getByRole("button", { name: "Configurar Trello" })).toHaveFocus();
+    expect(core.chooseAnchor).toHaveBeenLastCalledWith("tasks");
+    expect(within(trello).getByRole("button", { name: "Configurar Tarefas" })).toHaveFocus();
   });
 
   it("Escape asks the core to close the panel, also in Settings", async () => {
@@ -196,8 +196,8 @@ describe("Panel visibility", () => {
     expect(core.reportVisibleModules).toHaveBeenLastCalledWith(["ai", "agents", "github"]);
 
     // Scrolling down: the first row leaves the area.
-    await intersect(["system", "trello", "network"]);
-    expect(core.reportVisibleModules).toHaveBeenLastCalledWith(["trello", "network", "system"]);
+    await intersect(["system", "tasks", "network"]);
+    expect(core.reportVisibleModules).toHaveBeenLastCalledWith(["tasks", "network", "system"]);
   });
 
   it("does not report again when intersection events repeat the same set", async () => {
@@ -217,7 +217,7 @@ describe("Panel visibility", () => {
     const { core } = fakeCore();
     render(Panel, { core });
     await screen.findByRole("region", { name: "IA" });
-    await intersect(["trello", "network"]);
+    await intersect(["tasks", "network"]);
     const opener = settingsButton();
 
     await userEvent.click(opener);
@@ -272,14 +272,14 @@ it("sends a pasted GitHub token from Settings to the core", async () => {
 
 it("sends Trello key and token from Settings to the core", async () => {
   const { default: empty } = await import("./trello/fixtures/empty.json");
-  const { core } = fakeCore({ snapshots: [{ module: "trello", updatedAt: null, data: empty }] });
+  const { core } = fakeCore({ snapshots: [{ module: "tasks", updatedAt: null, data: empty }] });
   const connectTrello = vi.fn().mockResolvedValue("exemplo");
   render(Panel, { core: { ...core, connectTrello } });
-  await screen.findByRole("region", { name: "Trello" });
+  await screen.findByRole("region", { name: "Tarefas" });
   await userEvent.click(settingsButton());
-  await userEvent.click(screen.getByRole("button", { name: "Trello" }));
+  await userEvent.click(screen.getByRole("button", { name: "Tarefas" }));
   expect(core.reportVisibleModules).toHaveBeenLastCalledWith([]);
-  const trello = screen.getByRole("region", { name: "Trello" });
+  const trello = screen.getByRole("region", { name: "Tarefas" });
   await userEvent.type(within(trello).getByLabelText("API key"), "0123abcd");
   await userEvent.type(within(trello).getByLabelText("Token"), "private-token");
   await userEvent.click(within(trello).getByRole("button", { name: "Validar e salvar" }));
@@ -478,18 +478,18 @@ describe("Trello module in the panel", () => {
     const { core } = fakeCore();
     const refreshTrello = vi.fn();
     render(Panel, { core: { ...core, refreshTrello } });
-    const trello = await screen.findByRole("region", { name: "Trello" });
+    const trello = await screen.findByRole("region", { name: "Tarefas" });
     expect(within(trello).getByText("Sem leitura do quadro do Trello ainda")).toBeInTheDocument();
-    await userEvent.click(within(trello).getByRole("button", { name: "Atualizar Trello" }));
+    await userEvent.click(within(trello).getByRole("button", { name: "Atualizar Tarefas" }));
     expect(refreshTrello).toHaveBeenCalledOnce();
   });
 
   it("moves and opens cards through the core from the board overlay, keeping the summary in step", async () => {
-    const { core } = fakeCore({ snapshots: [{ module: "trello", updatedAt: 1, data: trelloFull }] });
+    const { core } = fakeCore({ snapshots: [{ module: "tasks", updatedAt: 1, data: trelloFull }] });
     const moveTrelloCard = vi.fn(async () => {});
     const openTrelloCard = vi.fn();
     render(Panel, { core: { ...core, moveTrelloCard, openTrelloCard } });
-    const trello = await screen.findByRole("region", { name: "Trello" });
+    const trello = await screen.findByRole("region", { name: "Tarefas" });
     const [from, to] = trelloFull.lists;
     const card = from.cards[0];
     await userEvent.click(within(trello).getByRole("button", { name: "Abrir quadro completo" }));
@@ -504,9 +504,9 @@ describe("Trello module in the panel", () => {
   });
 
   it("reverts a move when the core cannot reach Trello", async () => {
-    const { core } = fakeCore({ snapshots: [{ module: "trello", updatedAt: 1, data: trelloFull }] });
+    const { core } = fakeCore({ snapshots: [{ module: "tasks", updatedAt: 1, data: trelloFull }] });
     render(Panel, { core });
-    const trello = await screen.findByRole("region", { name: "Trello" });
+    const trello = await screen.findByRole("region", { name: "Tarefas" });
     const [from, to] = trelloFull.lists;
     await userEvent.click(within(trello).getByRole("button", { name: "Abrir quadro completo" }));
     const board = screen.getByRole("dialog", { name: "Quadro Trello" });
@@ -517,9 +517,9 @@ describe("Trello module in the panel", () => {
   });
 
   it("closes the board with Escape before Escape hides the panel, returning focus to its trigger", async () => {
-    const { core } = fakeCore({ snapshots: [{ module: "trello", updatedAt: 1, data: trelloFull }] });
+    const { core } = fakeCore({ snapshots: [{ module: "tasks", updatedAt: 1, data: trelloFull }] });
     render(Panel, { core });
-    const trello = await screen.findByRole("region", { name: "Trello" });
+    const trello = await screen.findByRole("region", { name: "Tarefas" });
     const trigger = within(trello).getByRole("button", { name: "Abrir quadro completo" });
     await userEvent.click(trigger);
     await userEvent.keyboard("{Escape}");
@@ -531,19 +531,19 @@ describe("Trello module in the panel", () => {
   });
 
   it("opens Settings from the module and returns focus to it", async () => {
-    const { core } = fakeCore({ snapshots: [{ module: "trello", updatedAt: 1, data: trelloFull }] });
+    const { core } = fakeCore({ snapshots: [{ module: "tasks", updatedAt: 1, data: trelloFull }] });
     render(Panel, { core });
-    const trello = await screen.findByRole("region", { name: "Trello" });
-    await userEvent.click(within(trello).getByRole("button", { name: "Configurar Trello" }));
+    const trello = await screen.findByRole("region", { name: "Tarefas" });
+    await userEvent.click(within(trello).getByRole("button", { name: "Configurar Tarefas" }));
     expect(screen.getByRole("heading", { name: "Configurações" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Voltar ao Painel" }));
-    expect(within(trello).getByRole("button", { name: "Configurar Trello" })).toHaveFocus();
+    expect(within(trello).getByRole("button", { name: "Configurar Tarefas" })).toHaveFocus();
   });
 
   it("keeps the selected card, focus and scroll position when a Trello snapshot arrives", async () => {
-    const { core, publish } = fakeCore({ snapshots: [{ module: "trello", updatedAt: 1, data: trelloFull }] });
+    const { core, publish } = fakeCore({ snapshots: [{ module: "tasks", updatedAt: 1, data: trelloFull }] });
     render(Panel, { core });
-    const trello = await screen.findByRole("region", { name: "Trello" });
+    const trello = await screen.findByRole("region", { name: "Tarefas" });
     const scroller = screen.getByRole("main");
     scroller.scrollTop = 120;
     await userEvent.click(within(trello).getByRole("button", { name: "Abrir quadro completo" }));
@@ -551,7 +551,7 @@ describe("Trello module in the panel", () => {
     const card = within(board).getByRole("button", { name: new RegExp(`^${trelloFull.lists[0].cards[0].name}`) });
     await userEvent.click(card);
 
-    await publish({ module: "trello", updatedAt: 2, data: { ...trelloFull, refreshing: true } });
+    await publish({ module: "tasks", updatedAt: 2, data: { ...trelloFull, refreshing: true } });
 
     expect(within(trello).getByText("Atualizando…")).toBeInTheDocument();
     expect(board).toHaveAttribute("open");
@@ -676,14 +676,14 @@ it("recovers one source without replacing another source's reading or selected c
   const { core, publish } = fakeCore({ snapshots: [
     { module: "ai", updatedAt: 1, data: aiFull },
     { module: "github", updatedAt: 1, data: invalidGithub },
-    { module: "trello", updatedAt: 1, data: trelloFull },
+    { module: "tasks", updatedAt: 1, data: trelloFull },
   ] });
   render(Panel, { core });
   const meter = await screen.findByRole("meter", { name: "Codex · janela de 5 h" });
   const value = meter.getAttribute("aria-valuenow");
   const scroller = screen.getByRole("main");
   scroller.scrollTop = 180;
-  await userEvent.click(within(section("Trello")).getByRole("button", { name: "Abrir quadro completo" }));
+  await userEvent.click(within(section("Tarefas")).getByRole("button", { name: "Abrir quadro completo" }));
   const card = within(screen.getByRole("dialog", { name: "Quadro Trello" }))
     .getByRole("button", { name: new RegExp(`^${trelloFull.lists[0].cards[0].name}`) });
   await userEvent.click(card);
@@ -799,7 +799,7 @@ it("keeps six modules accessible while simultaneous results expire independently
       { module: "ai", updatedAt: 1793460871000, data: aiFull },
       { module: "agents", updatedAt: 1793460871000, data: { ...waitingAgents, sessions: [], closed: [] } },
       { module: "github", updatedAt: 1793460871000, data: githubFull },
-      { module: "trello", updatedAt: 1793460871000, data: trelloFull },
+      { module: "tasks", updatedAt: 1793460871000, data: trelloFull },
       { module: "network", updatedAt: 1793460871000, data: networkFull.data },
       { module: "system", updatedAt: 1793460871000, data: notebook.data },
     ] });
@@ -811,7 +811,7 @@ it("keeps six modules accessible while simultaneous results expire independently
       { module: "ai", updatedAt: 1793460871000, data: { ...aiFull, codex: { ...aiFull.codex, operation: { id: 100, origin: "user", state: "running" } } } },
       { module: "agents", updatedAt: 1793460871000, data: waitingAgents },
       { module: "github", updatedAt: 1793460871000, data: githubFailure },
-      { module: "trello", updatedAt: 1793460871000, data: trelloOffline },
+      { module: "tasks", updatedAt: 1793460871000, data: trelloOffline },
       { module: "network", updatedAt: 1793460871000, data: { ...networkFull.data, speedOperation: { id: 100, origin: "user", state: "cancelled" } } },
       { module: "system", updatedAt: 1793460871000, data: systemWarning.data },
     ]);
@@ -876,13 +876,13 @@ it("opens a module-only notification at Agents even when first-use welcome is pe
 
 
 it("accepts a newer revision clearing the previous context even with a null reading time", async () => {
-  const initial = { module: "trello" as const, updatedAt: 10, data: trelloFull, revision: 1, runtimeId: "test-runtime", contextGeneration: 1 };
+  const initial = { module: "tasks" as const, updatedAt: 10, data: trelloFull, revision: 1, runtimeId: "test-runtime", contextGeneration: 1 };
   const { core, publish } = fakeCore({ snapshots: [initial] });
   render(Panel, { core });
   expect(await screen.findByText("17 cards · 8 listas")).toBeInTheDocument();
-  const cleared = { module: "trello" as const, updatedAt: null, revision: 2, runtimeId: "test-runtime", contextGeneration: 2,
+  const cleared = { module: "tasks" as const, updatedAt: null, revision: 2, runtimeId: "test-runtime", contextGeneration: 2,
     data: { state: "missingCredential", refreshing: false, account: null, boards: [], board: null, lists: null } };
   await publish(cleared);
   expect(screen.queryByText("17 cards · 8 listas")).not.toBeInTheDocument();
-  expect(within(section("Trello")).getByRole("button", { name: "Configurar Trello" })).toBeInTheDocument();
+  expect(within(section("Tarefas")).getByRole("button", { name: "Configurar Tarefas" })).toBeInTheDocument();
 });

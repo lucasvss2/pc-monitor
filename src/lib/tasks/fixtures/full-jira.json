@@ -1,0 +1,102 @@
+{
+  "provider": "jira",
+  "contextGeneration": 7,
+  "canWrite": true,
+  "writeBusy": false,
+  "state": "ready",
+  "refreshing": false,
+  "account": {
+    "login": "Pessoa de exemplo"
+  },
+  "boards": [
+    {
+      "id": "42",
+      "name": "Quadro de exemplo"
+    }
+  ],
+  "board": {
+    "id": "42",
+    "name": "Quadro de exemplo"
+  },
+  "columns": [
+    {
+      "id": "0",
+      "name": "Coluna 1",
+      "statuses": [
+        "10000"
+      ]
+    },
+    {
+      "id": "1",
+      "name": "Coluna 2",
+      "statuses": [
+        "10001"
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Coluna 3",
+      "statuses": [
+        "10002"
+      ]
+    },
+    {
+      "id": "3",
+      "name": "Coluna 4",
+      "statuses": [
+        "10003"
+      ]
+    },
+    {
+      "id": "4",
+      "name": "Coluna 5",
+      "statuses": [
+        "10004"
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "id": "20000",
+      "key": "EXM-1",
+      "title": "Item de exemplo 1",
+      "status": {
+        "id": "10000",
+        "name": "Estado 10000"
+      },
+      "type": "Tarefa",
+      "priority": "Alta",
+      "assignee": "Pessoa de exemplo",
+      "due": "2030-01-15",
+      "url": "https://example.atlassian.net/browse/EXM-1"
+    },
+    {
+      "id": "20001",
+      "key": "EXM-2",
+      "title": "Item de exemplo 2",
+      "status": {
+        "id": "10001",
+        "name": "Estado 10001"
+      },
+      "type": "Tarefa",
+      "priority": "Alta",
+      "assignee": "Pessoa de exemplo",
+      "due": "2030-01-15",
+      "url": "https://example.atlassian.net/browse/EXM-2"
+    },
+    {
+      "id": "20002",
+      "key": "EXM-3",
+      "title": "Item de exemplo 3",
+      "status": {
+        "id": "10003",
+        "name": "Estado 10003"
+      },
+      "type": "Tarefa",
+      "priority": "Alta",
+      "assignee": "Pessoa de exemplo",
+      "due": "2030-01-15",
+      "url": "https://example.atlassian.net/browse/EXM-3"
+    }
+  ]
+}

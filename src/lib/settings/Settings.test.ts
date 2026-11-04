@@ -80,7 +80,7 @@ describe("first run", () => {
   it("opens Settings with the welcome, the status of each module and its shortcuts", async () => {
     const { core } = fakeCore({
       welcome: true,
-      snapshots: [snapshot("ai", aiOff), snapshot("github", githubMissing), snapshot("trello", trelloFull)],
+      snapshots: [snapshot("ai", aiOff), snapshot("github", githubMissing), snapshot("tasks", trelloFull)],
     });
     render(Panel, { core });
 
@@ -92,7 +92,7 @@ describe("first run", () => {
     const row = (name: string) => within(welcome).getByRole("listitem", { name });
     expect(row("IA")).toHaveTextContent("Precisa configurar");
     expect(row("GitHub")).toHaveTextContent("Precisa configurar");
-    expect(row("Trello")).toHaveTextContent("Detectado");
+    expect(row("Tarefas")).toHaveTextContent("Detectado");
     for (const name of ["Agentes", "Rede", "Sistema"]) expect(row(name)).toHaveTextContent("Não precisa configurar");
 
     // The Claude Code shortcut acts only on this click.
@@ -125,17 +125,17 @@ describe("first run", () => {
   });
 
   it("explains modules still being checked and those that need a board or a connection", async () => {
-    const { core } = fakeCore({ welcome: true, snapshots: [snapshot("trello", trelloChooseBoard), snapshot("ai", aiConnected)] });
+    const { core } = fakeCore({ welcome: true, snapshots: [snapshot("tasks", trelloChooseBoard), snapshot("ai", aiConnected)] });
     render(Panel, { core });
 
     const welcome = await screen.findByRole("region", { name: "Boas-vindas" });
-    expect(within(welcome).getByRole("listitem", { name: "Trello" })).toHaveTextContent("Precisa configurar");
+    expect(within(welcome).getByRole("listitem", { name: "Tarefas" })).toHaveTextContent("Precisa configurar");
     expect(within(welcome).getByRole("listitem", { name: "IA" })).toHaveTextContent("Detectado");
     expect(within(welcome).getByRole("listitem", { name: "GitHub" })).toHaveTextContent("Verificando");
   });
 
   it("leaves the welcome for the panel and never shows it on later openings", async () => {
-    const { core } = fakeCore({ welcome: true, snapshots: [snapshot("trello", trelloEmpty), snapshot("github", githubFull)] });
+    const { core } = fakeCore({ welcome: true, snapshots: [snapshot("tasks", trelloEmpty), snapshot("github", githubFull)] });
     render(Panel, { core });
     await screen.findByRole("region", { name: "Boas-vindas" });
 
@@ -402,7 +402,7 @@ describe("index", () => {
     const app = within(index()).getByRole("list", { name: "App" });
     expect(within(app).getAllByRole("button").map((b) => b.textContent)).toEqual(["Geral", "Aparência"]);
     const modules = within(index()).getByRole("list", { name: "Módulos" });
-    expect(within(modules).getAllByRole("button").map((b) => b.textContent)).toEqual(["IA", "Agentes", "GitHub", "Trello", "Rede"]);
+    expect(within(modules).getAllByRole("button").map((b) => b.textContent)).toEqual(["IA", "Agentes", "GitHub", "Tarefas", "Rede"]);
     expect(within(index()).queryByRole("button", { name: "Sistema" })).not.toBeInTheDocument();
 
     expect(indexItem("Geral")).toHaveAttribute("aria-current", "page");
@@ -415,9 +415,9 @@ describe("index", () => {
   it.each([
     ["IA", "Configurar IA"],
     ["GitHub", "Configurar GitHub"],
-    ["Trello", "Configurar Trello"],
+    ["Tarefas", "Configurar Tarefas"],
   ])("opens the %s section from its configure button in the panel", async (section, button) => {
-    const { core } = fakeCore({ snapshots: [snapshot("ai", aiConnected), snapshot("github", githubFull), snapshot("trello", trelloFull)] });
+    const { core } = fakeCore({ snapshots: [snapshot("ai", aiConnected), snapshot("github", githubFull), snapshot("tasks", trelloFull)] });
     render(Panel, { core });
 
     await userEvent.click(await screen.findByRole("button", { name: button }));
@@ -475,27 +475,27 @@ describe("index", () => {
   });
 
   it.each([
-    ["disconnected AI, GitHub without gh and empty Trello", [snapshot("ai", aiOff), snapshot("github", githubMissing), snapshot("trello", trelloEmpty)], ["IA", "GitHub", "Trello"]],
-    ["Trello choosing a board", [snapshot("ai", aiConnected), snapshot("github", githubFull), snapshot("trello", trelloChooseBoard)], ["Trello"]],
-    ["every module detected", [snapshot("ai", aiConnected), snapshot("github", githubFull), snapshot("trello", trelloFull)], []],
+    ["disconnected AI, GitHub without gh and empty Trello", [snapshot("ai", aiOff), snapshot("github", githubMissing), snapshot("tasks", trelloEmpty)], ["IA", "GitHub", "Tarefas"]],
+    ["Trello choosing a board", [snapshot("ai", aiConnected), snapshot("github", githubFull), snapshot("tasks", trelloChooseBoard)], ["Tarefas"]],
+    ["every module detected", [snapshot("ai", aiConnected), snapshot("github", githubFull), snapshot("tasks", trelloFull)], []],
     ["modules still being checked", [], []],
   ])("marks only the modules that need configuration: %s", async (_, snapshots, marked) => {
     const { core } = fakeCore({ snapshots });
     render(Panel, { core });
     await openSettings();
 
-    const needsSetup = ["Geral", "Aparência", "IA", "Agentes", "GitHub", "Trello", "Rede"]
+    const needsSetup = ["Geral", "Aparência", "IA", "Agentes", "GitHub", "Tarefas", "Rede"]
       .filter((name) => within(index()).queryByRole("button", { name, description: "precisa configurar" }));
     expect(needsSetup).toEqual(marked);
   });
 
   it("goes back to the panel from any section", async () => {
-    const { core } = fakeCore({ snapshots: [snapshot("trello", trelloFull)] });
+    const { core } = fakeCore({ snapshots: [snapshot("tasks", trelloFull)] });
     render(Panel, { core });
-    await openSection("Trello");
+    await openSection("Tarefas");
 
     await userEvent.click(screen.getByRole("button", { name: "Voltar ao Painel" }));
     expect(screen.queryByRole("heading", { name: "Configurações" })).not.toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Trello" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Tarefas" })).toBeInTheDocument();
   });
 });

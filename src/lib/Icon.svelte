@@ -22,8 +22,8 @@
   {:else if name === "github"}
     <circle cx="5" cy="4" r="1.5" /><circle cx="5" cy="12" r="1.5" /><circle cx="11" cy="6" r="1.5" />
     <path d="M5 5.5v5M11 7.5c0 2-6 1.5-6 3" />
-  {:else if name === "trello"}
-    <rect x="2" y="2" width="12" height="12" rx="2" /><path d="M5 5v6M9 5v3" />
+  {:else if name === "tasks"}
+    <path d="m2 4 1 1 2-2M7 4h7m-12 6 1 1 2-2M7 10h7" />
   {:else if name === "network"}
     <path d="M2 6.5a9 9 0 0112 0M4 9a6 6 0 018 0M6 11.5a3 3 0 014 0" /><circle cx="8" cy="13.5" r=".6" />
   {:else if name === "system"}

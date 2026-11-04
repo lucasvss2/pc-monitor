@@ -249,28 +249,30 @@ pub fn start(app: &AppHandle) {
             Some(Module::Github)
         },
     )));
-    app.manage(crate::trello::Collector(serve(
-        app,
-        &shared,
-        |f, command| {
-            use crate::trello::Command;
-            match command {
-                Command::Refresh => {}
-                Command::Connect(_, _, reply) => {
-                    let _ = reply.send(Ok(f.login(Module::Tasks)));
-                }
-                Command::SelectBoard(_, reply)
-                | Command::Disconnect(reply)
-                | Command::Authorize(_, reply) => {
-                    let _ = reply.send(Ok(()));
-                }
-                Command::Move(card, list, reply) => {
-                    let _ = reply.send(f.move_card(&card, &list));
-                }
+    app.manage(crate::tasks::Collector(serve(app, &shared, |f, command| {
+        use crate::tasks::{Command, Provider, Error};
+        match command {
+            Command::Refresh(_) | Command::Open(_, _) => {}
+            Command::Connect(_, _, reply) => { let _ = reply.send(Ok(f.login(Module::Tasks))); }
+            Command::Switch(_, provider, reply) => {
+                let generation = f.get(Module::Tasks).data["contextGeneration"].as_u64().unwrap_or(0) + 1;
+                let mut snapshot = if provider == Provider::Trello { load(&fixtures_root(), Module::Tasks, "full").unwrap() } else {
+                    Snapshot { module: Module::Tasks, updated_at: None, data: serde_json::json!({"state":"missingCredential","account":null,"boards":[],"board":null,"columns":[],"issues":[],"refreshing":false}) }
+                };
+                snapshot.data["provider"] = serde_json::json!(provider);
+                snapshot.data["contextGeneration"] = serde_json::json!(generation);
+                f.0.insert(Module::Tasks, snapshot);
+                let _ = reply.send(Ok(()));
             }
-            Some(Module::Tasks)
-        },
-    )));
+            Command::SelectBoard(_, _, reply) | Command::Disconnect(_, reply) | Command::Authorize(_, _, reply) | Command::RetryCleanup(_, reply) => { let _ = reply.send(Ok(())); }
+            Command::Transitions(_, _, reply) => { let _ = reply.send(Ok(vec![])); }
+            Command::Perform(_, action, reply) => {
+                let result = match action { crate::tasks::Action::Move {item,list} => f.move_card(&item,&list).map_err(|_| Error::Refused), _ => Err(Error::Refused) };
+                let _ = reply.send(result);
+            }
+        }
+        Some(Module::Tasks)
+    })));
     app.manage(crate::agents::Collector(serve(
         app,
         &shared,

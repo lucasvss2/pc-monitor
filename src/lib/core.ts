@@ -2,14 +2,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export const MODULES = ["ai", "agents", "github", "trello", "network", "system"] as const;
+export const MODULES = ["ai", "agents", "github", "tasks", "network", "system"] as const;
 export type Module = (typeof MODULES)[number];
 
 /** Transient metadata only; never cached or used as a data timestamp. */
 export interface Operation {
   id: number;
+  contextGeneration?: number;
   origin: "user" | "automatic" | "resume";
-  state: "running" | "succeeded" | "failed" | "recovered" | "paused" | "unavailable" | "cancelled" | "attention";
+  state: "running" | "succeeded" | "failed" | "recovered" | "paused" | "unavailable" | "cancelled" | "attention" | "unconfirmed";
 }
 
 export interface Snapshot {
@@ -73,6 +74,7 @@ export interface GeneralSettings {
 
 export interface InitialState {
   runtimeId?: string;
+  preferencesError?: "futureSchema" | "unreadable" | "migrationFailed" | null;
   /** Capabilities not implemented by the current native adapter. */
   unavailableModules?: Module[];
   panelVisible?: boolean;
@@ -91,6 +93,16 @@ export interface InitialState {
 export interface AgentNotificationPreferences { waiting: boolean; done: boolean; failed: boolean }
 
 export interface Core {
+  refreshTasks?(generation: number): void;
+  switchTaskProvider?(generation: number, provider: TaskProvider): Promise<void>;
+  connectTasks?(generation: number, connection: TaskConnection): Promise<string>;
+  selectTaskBoard?(generation: number, board: string): Promise<void>;
+  disconnectTasks?(generation: number): Promise<void>;
+  retryTaskCleanup?(generation: number): Promise<void>;
+  taskTransitions?(generation: number, item: string): Promise<TaskTransition[]>;
+  performTaskAction?(generation: number, action: TaskAction): Promise<void>;
+  openTask?(generation: number, url: string): void;
+  authorizeTrello?(generation: number, key: string): void;
   listenPanelVisibility?(cb: (visible: boolean) => void): Promise<() => void>;
   listenAgentTarget?(cb: (session: string) => void): Promise<() => void>;
   setAgentHooks?(enabled: boolean): Promise<void>;
@@ -137,6 +149,16 @@ export interface Core {
 
 let snapshotListenersReady: Promise<unknown> = Promise.resolve();
 export const tauriCore: Core = {
+  refreshTasks: (generation) => void invoke("refresh_tasks", { generation }),
+  switchTaskProvider: (generation, provider) => invoke("switch_task_provider", { generation, provider }),
+  connectTasks: (generation, connection) => invoke("connect_tasks", { generation, connection }),
+  selectTaskBoard: (generation, board) => invoke("select_task_board", { generation, board }),
+  disconnectTasks: (generation) => invoke("disconnect_tasks", { generation }),
+  retryTaskCleanup: (generation) => invoke("retry_task_cleanup", { generation }),
+  taskTransitions: (generation, item) => invoke("task_transitions", { generation, item }),
+  performTaskAction: (generation, action) => invoke("perform_task_action", { generation, action }),
+  openTask: (generation, url) => void invoke("open_task", { generation, url }),
+  authorizeTrello: (generation, key) => void invoke("authorize_trello", { generation, key }),
   listenAgentTarget: (cb) => listen<string>("agent-target", (e) => cb(e.payload)),
   setAgentHooks: (enabled) => invoke<void>("set_agent_hooks", { enabled }),
   setAgentNotifications: (preferences) => void invoke("set_agent_notifications", { preferences }),
@@ -158,14 +180,7 @@ export const tauriCore: Core = {
   disconnectClaude: () => invoke<void>("disconnect_claude"),
   setClaudeUsage: (enabled) => invoke<void>("set_claude_usage", { enabled }),
   refreshGithub: () => void invoke("refresh_github"),
-  refreshTrello: () => void invoke("refresh_trello"),
-  connectTrello: (key, token) => invoke<string>("connect_trello", { key, token }),
-  selectTrelloBoard: (board) => invoke<void>("select_trello_board", { board }),
-  disconnectTrello: () => invoke<void>("disconnect_trello"),
   openTrelloAdmin: () => void invoke("open_trello_admin"),
-  openTrelloAuthorization: (key) => void invoke("open_trello_authorization", { key }),
-  openTrelloCard: (url) => void invoke("open_trello_card", { url }),
-  moveTrelloCard: (card, list) => invoke<void>("move_trello_card", { card, list }),
   closePanel: () => void invoke("close_panel"),
   listenSystemTheme: (cb) => listen<SystemTheme>("system-theme", (e) => cb(e.payload)),
   completeWelcome: () => void invoke("complete_welcome"),
@@ -290,6 +305,34 @@ export interface TrelloData {
   /** Key typed before generating the token; kept in core memory only. */
   pendingKey?: string;
 }
+
+export type TaskProvider = "trello" | "jira";
+export type TaskConnection = { provider: "trello"; key: string; token: string } | { provider: "jira"; site: string; email: string; token: string };
+export type TaskAction = { kind: "move"; item: string; list: string } | { kind: "transition"; item: string; transition: string };
+export interface TaskTransition { id: string; name: string; status: string; requiresFields: boolean }
+export interface JiraIssue { id: string; key: string; title: string; type: string | null; status: { id: string; name: string }; priority: string | null; assignee: string | null; due: string | null; url: string }
+export interface JiraData {
+  state: "missingCredential" | "chooseBoard" | "ready" | "error" | "invalidCredential";
+  account: { login: string } | null;
+  boards: { id: string; name: string }[];
+  board: { id: string; name: string } | null;
+  columns: { id: string; name: string; statuses: string[] }[];
+  issues: JiraIssue[];
+  refreshing: boolean;
+  paused?: boolean;
+  requiresRead?: boolean;
+  rateLimited?: boolean;
+  lastSuccessAt?: number | null;
+  reason?: string;
+  operation?: Operation;
+  movement?: Operation;
+}
+interface TaskContext { contextGeneration?: number; canWrite?: boolean; writeBusy?: boolean; initializing?: boolean }
+export type TasksData = TaskContext & (
+  | (TrelloData & { provider?: "trello" })
+  | (JiraData & { provider: "jira" })
+  | { provider: TaskProvider; state: "cleanupPending" | "settingsUnavailable"; cleanupPending?: boolean; cleanupFailed?: boolean }
+);
 
 export interface AgentSession {
   provider?: "claude" | "codex";

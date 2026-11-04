@@ -501,10 +501,10 @@ fn disconnecting_erases_key_token_and_cached_board() {
     trello.connect("0123abcd", "private-token").unwrap();
     trello.select_board(&board_id(0)).unwrap();
     trello.step(true, false).unwrap();
-    assert!(dir.path().join("cache/trello.json").exists());
+    assert!(dir.path().join("cache/tasks.json").exists());
     assert_eq!(trello.disconnect(), Ok(()));
     assert_eq!(*vault.0.lock().unwrap(), None);
-    assert!(!dir.path().join("cache/trello.json").exists());
+    assert!(!dir.path().join("cache/tasks.json").exists());
     let data = trello.snapshot(false).data;
     assert_eq!(data["state"], "missingCredential");
     assert!(data["account"].is_null() && data["lists"].is_null());
@@ -546,7 +546,7 @@ fn restart_restores_last_board_without_card_titles_or_credentials() {
     assert_eq!(card["labels"], json!(["red", "sky_light"]));
     assert_eq!(card["url"], fresh.data["lists"][0]["cards"][0]["url"]);
     assert_eq!(card["overdue"], true);
-    let cache = std::fs::read_to_string(dir.path().join("cache/trello.json")).unwrap();
+    let cache = std::fs::read_to_string(dir.path().join("cache/tasks.json")).unwrap();
     let log = std::fs::read_to_string(dir.path().join("state/info.log")).unwrap();
     for text in [&cache, &log] {
         for secret in ["private-token", "0123abcd", "Card 1.1", "privado"] {
@@ -555,7 +555,7 @@ fn restart_restores_last_board_without_card_titles_or_credentials() {
     }
     assert_eq!(
         serde_json::from_str::<Value>(log.lines().last().unwrap()).unwrap(),
-        json!({"source":"trello","event":"updated","httpStatus":200,"durationMs":0})
+        json!({"source":"tasks","event":"updated","httpStatus":200,"durationMs":0})
     );
 }
 
@@ -679,7 +679,7 @@ fn locked_keyring_keeps_the_restored_board_until_it_unlocks() {
     let snapshot = restarted.step(true, false).unwrap();
     assert_eq!(snapshot.data["state"], "stale");
     assert_eq!(snapshot.data["board"]["id"], board_id(0));
-    assert!(dir.path().join("cache/trello.json").exists());
+    assert!(dir.path().join("cache/tasks.json").exists());
     *locked.lock().unwrap() = false;
     clock.advance(30_000);
     assert_eq!(restarted.step(true, false).unwrap().data["state"], "ready");
@@ -769,7 +769,7 @@ fn generating_a_token_keeps_the_key_in_memory_while_the_panel_is_closed() {
     trello.authorize(&Launcher::default(), "0123abcd").unwrap();
     trello.disconnect().unwrap();
     assert!(trello.snapshot(false).data.get("pendingKey").is_none());
-    for file in ["cache/trello.json", "state/info.log"] {
+    for file in ["cache/tasks.json", "state/info.log"] {
         let text = std::fs::read_to_string(dir.path().join(file)).unwrap_or_default();
         assert!(!text.contains("0123abcd"), "{file}");
     }
@@ -823,7 +823,7 @@ fn moving_a_card_updates_its_list_then_rereads_the_board_and_restarts_the_clock(
 }
 
 #[test]
-fn failed_move_keeps_the_last_board_and_its_clock_and_logs_only_metadata() {
+fn unconfirmed_move_keeps_the_last_board_and_its_clock_and_logs_only_metadata() {
     for status in [Some(500), Some(0)] {
         let dir = tempfile::tempdir().unwrap();
         let clock = FakeClock::at(NOW);
@@ -844,7 +844,7 @@ fn failed_move_keeps_the_last_board_and_its_clock_and_logs_only_metadata() {
         let mut board = after.data.clone();
         assert_eq!(
             board.as_object_mut().unwrap().remove("movement").unwrap()["state"],
-            "failed"
+            "unconfirmed"
         );
         assert_eq!(board, before.data);
         assert_eq!(after.updated_at, Some(NOW));
@@ -1040,7 +1040,7 @@ fn movement_and_refresh_metadata_are_never_cached_or_logged() {
     *api.lists.lock().unwrap() = Some(lists);
     trello.step(true, false).unwrap();
     assert_eq!(trello.move_card(CARD, EMPTY_LIST, |_| {}), Ok(()));
-    for file in ["cache/trello.json", "state/info.log"] {
+    for file in ["cache/tasks.json", "state/info.log"] {
         let text = std::fs::read_to_string(dir.path().join(file)).unwrap();
         for secret in [
             "operation",
@@ -1076,7 +1076,7 @@ fn movement_result_is_published_before_the_board_reread_starts() {
 }
 
 #[test]
-fn suspension_during_put_cancels_the_move_and_keeps_the_last_confirmed_board() {
+fn suspension_during_put_leaves_the_result_unconfirmed_and_keeps_the_last_reading() {
     let api = Api::default();
     let shared = Arc::new(Mutex::new(crate::lifecycle::Status {
         online: true,
@@ -1093,7 +1093,7 @@ fn suspension_during_put_cancels_the_move_and_keeps_the_last_confirmed_board() {
         Err(MoveError)
     );
     let end = published.last().unwrap();
-    assert_eq!(end.data["movement"]["state"], "cancelled");
+    assert_eq!(end.data["movement"]["state"], "unconfirmed");
     assert_eq!(end.data["lists"], before.data["lists"]);
     assert_eq!(end.updated_at, before.updated_at);
     assert!(end.data["paused"].as_bool().unwrap());
@@ -1117,7 +1117,7 @@ fn connection_generation_changed_during_get_discards_the_read_without_success_or
         .with_lifecycle(shared.clone())
         .with_persistence(disk(&dir));
     let before = trello.step(true, false).unwrap();
-    let cache = std::fs::read_to_string(dir.path().join("cache/trello.json")).unwrap();
+    let cache = std::fs::read_to_string(dir.path().join("cache/tasks.json")).unwrap();
     clock.advance(30_000);
     *api.lists.lock().unwrap() = Some(moved_lists());
     *api.lifecycle_after_get.lock().unwrap() = Some(shared);
@@ -1126,7 +1126,7 @@ fn connection_generation_changed_during_get_discards_the_read_without_success_or
     assert_eq!(end.data["lists"], before.data["lists"]);
     assert_eq!(end.updated_at, before.updated_at);
     assert_eq!(
-        std::fs::read_to_string(dir.path().join("cache/trello.json")).unwrap(),
+        std::fs::read_to_string(dir.path().join("cache/tasks.json")).unwrap(),
         cache
     );
     assert_eq!(

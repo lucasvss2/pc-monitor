@@ -158,6 +158,12 @@ fn sanitize(module: Module, data: &Value) -> io::Result<Value> {
             serde_json::to_value(clean).map_err(io::Error::other)
         }
         Module::Tasks => {
+            if data["provider"] == "jira" {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Jira readings are memory-only",
+                ));
+            }
             let clean: CachedTrello =
                 serde_json::from_value(data.clone()).map_err(io::Error::other)?;
             serde_json::to_value(clean).map_err(io::Error::other)
@@ -243,7 +249,7 @@ pub trait Persistence: Send {
     fn load(&self, module: Module) -> Option<Snapshot>;
     fn save(&self, snapshot: &Snapshot);
     /// Forget the cached snapshot, e.g. after disconnecting an account.
-    fn clear(&self, module: Module);
+    fn clear(&self, module: Module) -> io::Result<()>;
     fn log(&self, record: LogRecord);
 }
 pub struct LocalPersistence<C, L> {
@@ -257,8 +263,14 @@ impl<C: Storage, L: Storage> Persistence for LocalPersistence<C, L> {
     fn save(&self, snapshot: &Snapshot) {
         let _ = self.cache.save(snapshot);
     }
-    fn clear(&self, module: Module) {
-        let _ = self.cache.0.remove(&format!("{}.json", module.id()));
+    fn clear(&self, module: Module) -> io::Result<()> {
+        self.cache.0.remove(&format!("{}.json", module.id()))?;
+        self.cache.0.remove(&format!("{}.json.tmp", module.id()))?;
+        if module == Module::Tasks {
+            self.cache.0.remove("trello.json")?;
+            self.cache.0.remove("trello.json.tmp")?;
+        }
+        Ok(())
     }
     fn log(&self, record: LogRecord) {
         let _ = self.logs.record(record);
@@ -270,7 +282,9 @@ impl Persistence for Volatile {
         None
     }
     fn save(&self, _: &Snapshot) {}
-    fn clear(&self, _: Module) {}
+    fn clear(&self, _: Module) -> io::Result<()> {
+        Ok(())
+    }
     fn log(&self, _: LogRecord) {}
 }
 

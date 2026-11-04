@@ -1,0 +1,12 @@
+{
+  "isLast": true,
+  "maxResults": 50,
+  "startAt": 0,
+  "values": [
+    {
+      "id": 42,
+      "name": "Quadro de exemplo",
+      "type": "simple"
+    }
+  ]
+}

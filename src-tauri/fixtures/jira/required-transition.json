@@ -1,0 +1,19 @@
+{
+  "transitions": [
+    {
+      "id": "99",
+      "name": "Concluir",
+      "to": {
+        "id": "10001",
+        "name": "Concluído"
+      },
+      "hasScreen": true,
+      "fields": {
+        "resolution": {
+          "required": true,
+          "name": "Resolução"
+        }
+      }
+    }
+  ]
+}

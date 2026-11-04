@@ -15,6 +15,7 @@ use crate::state::AppState;
 #[serde(rename_all = "camelCase")]
 pub struct InitialState {
     runtime_id: String,
+    preferences_error: Option<&'static str>,
     unavailable_modules: Vec<Module>,
     panel_visible: bool,
     last_anchor: Module,
@@ -37,6 +38,7 @@ pub fn initial_state(
     let state = state.lock().unwrap();
     InitialState {
         runtime_id: snapshots.runtime_id().into(),
+        preferences_error: state.preferences_error(),
         unavailable_modules: if cfg!(windows) {
             vec![Module::Ai, Module::Network, Module::System]
         } else {
@@ -154,88 +156,114 @@ pub async fn save_github_token(
 }
 
 #[tauri::command]
-pub fn refresh_trello(collector: State<crate::trello::Collector>) {
-    let _ = collector.0.send(crate::trello::Command::Refresh);
+pub fn refresh_tasks(generation: u64, collector: State<crate::tasks::Collector>) {
+    let _ = collector.0.send(crate::tasks::Command::Refresh(generation));
 }
-
-/// Send a command with a reply channel to the Trello collector thread.
-async fn ask_trello<T>(
-    collector: State<'_, crate::trello::Collector>,
+async fn ask_tasks<T>(
+    collector: State<'_, crate::tasks::Collector>,
     command: impl FnOnce(
-        tokio::sync::oneshot::Sender<Result<T, crate::trello::CredentialError>>,
-    ) -> crate::trello::Command,
-) -> Result<T, crate::trello::CredentialError> {
+        tokio::sync::oneshot::Sender<Result<T, crate::tasks::Error>>,
+    ) -> crate::tasks::Command,
+) -> Result<T, crate::tasks::Error> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     collector
         .0
         .send(command(tx))
-        .map_err(|_| crate::trello::CredentialError::KeyringUnavailable)?;
+        .map_err(|_| crate::tasks::Error::SettingsUnavailable)?;
     rx.await
-        .map_err(|_| crate::trello::CredentialError::KeyringUnavailable)?
+        .map_err(|_| crate::tasks::Error::SettingsUnavailable)?
 }
-
 #[tauri::command]
-pub async fn connect_trello(
-    key: String,
-    token: String,
-    collector: State<'_, crate::trello::Collector>,
-) -> Result<String, crate::trello::CredentialError> {
-    ask_trello(collector, |reply| {
-        crate::trello::Command::Connect(key, token, reply)
+pub async fn switch_task_provider(
+    generation: u64,
+    provider: crate::tasks::Provider,
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<(), crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::Switch(generation, provider, reply)
     })
     .await
 }
-
 #[tauri::command]
-pub async fn select_trello_board(
+pub async fn connect_tasks(
+    generation: u64,
+    connection: crate::tasks::Connection,
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<String, crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::Connect(generation, connection, reply)
+    })
+    .await
+}
+#[tauri::command]
+pub async fn select_task_board(
+    generation: u64,
     board: String,
-    collector: State<'_, crate::trello::Collector>,
-) -> Result<(), crate::trello::CredentialError> {
-    ask_trello(collector, |reply| {
-        crate::trello::Command::SelectBoard(board, reply)
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<(), crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::SelectBoard(generation, board, reply)
     })
     .await
 }
-
 #[tauri::command]
-pub async fn disconnect_trello(
-    collector: State<'_, crate::trello::Collector>,
-) -> Result<(), crate::trello::CredentialError> {
-    ask_trello(collector, crate::trello::Command::Disconnect).await
-}
-
-/// The collector remembers the key, since the browser closes the panel.
-#[tauri::command]
-pub async fn open_trello_authorization(
-    key: String,
-    collector: State<'_, crate::trello::Collector>,
-) -> Result<(), crate::trello::CredentialError> {
-    ask_trello(collector, |reply| {
-        crate::trello::Command::Authorize(key, reply)
+pub async fn disconnect_tasks(
+    generation: u64,
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<(), crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::Disconnect(generation, reply)
     })
     .await
 }
-
-/// Rejects when Trello refuses or cannot be reached; the panel then undoes its
-/// optimistic move.
 #[tauri::command]
-pub async fn move_trello_card(
-    card: String,
-    list: String,
-    collector: State<'_, crate::trello::Collector>,
-) -> Result<(), crate::trello::MoveError> {
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    collector
+pub async fn retry_task_cleanup(
+    generation: u64,
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<(), crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::RetryCleanup(generation, reply)
+    })
+    .await
+}
+#[tauri::command]
+pub async fn task_transitions(
+    generation: u64,
+    item: String,
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<Vec<crate::tasks::Transition>, crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::Transitions(generation, item, reply)
+    })
+    .await
+}
+#[tauri::command]
+pub async fn perform_task_action(
+    generation: u64,
+    action: crate::tasks::Action,
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<(), crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::Perform(generation, action, reply)
+    })
+    .await
+}
+#[tauri::command]
+pub fn open_task(generation: u64, url: String, collector: State<crate::tasks::Collector>) {
+    let _ = collector
         .0
-        .send(crate::trello::Command::Move(card, list, tx))
-        .map_err(|_| crate::trello::MoveError)?;
-    rx.await.map_err(|_| crate::trello::MoveError)?
+        .send(crate::tasks::Command::Open(generation, url));
 }
-
-// Async commands run off the main thread while xdg-open hands the URL over.
 #[tauri::command]
-pub async fn open_trello_card(url: String) {
-    crate::trello::open_card(&crate::ports::SystemProcesses, &url);
+pub async fn authorize_trello(
+    generation: u64,
+    key: String,
+    collector: State<'_, crate::tasks::Collector>,
+) -> Result<(), crate::tasks::Error> {
+    ask_tasks(collector, |reply| {
+        crate::tasks::Command::Authorize(generation, key, reply)
+    })
+    .await
 }
 
 #[tauri::command]

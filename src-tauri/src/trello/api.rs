@@ -45,6 +45,9 @@ impl TrelloHttp {
         path: &str,
     ) -> Result<reqwest::blocking::Response, HttpError> {
         let response = reqwest::blocking::Client::builder()
+            .https_only(true)
+            .redirect(reqwest::redirect::Policy::none())
+            .retry(reqwest::retry::never())
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .map_err(|_| HttpError::default())?

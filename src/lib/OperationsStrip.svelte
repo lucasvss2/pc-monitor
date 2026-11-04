@@ -123,7 +123,7 @@
     const messages = speed ? { ...t.operations.messages, ...t.operations.speed } : kind === "movement" ? t.operations.movement : t.operations.messages;
     if (!Object.hasOwn(messages, state)) return null;
     const text = message ?? (state === "running" && operation.origin === "resume" ? t.operations.resume : messages[state]);
-    const priority = state === "failed" ? 0 : state === "paused" ? 1 : state === "attention" || state === "unavailable" ? 2 : state === "running" ? 3 : 4;
+    const priority = state === "failed" || state === "unconfirmed" ? 0 : state === "paused" ? 1 : state === "attention" || state === "unavailable" ? 2 : state === "running" ? 3 : 4;
     return { module, operation, text: `${provider ? t.operations.providers[provider] : t.modules[module]} · ${text}`, priority };
   }
 
@@ -158,15 +158,19 @@
       }
       if (module === "agents" && data && "sessions" in data) return agentSources(data as unknown as AgentsData);
       if (module === "system" && data && "cpu" in data) return systemSources(data as unknown as SystemData);
-      if (module === "trello") {
+      if (module === "tasks") {
         return [
-          { module, source: "trello:refresh", operation: data?.operation },
-          { module, source: "trello:movement", kind: "movement", operation: data?.movement },
+          { module, source: `tasks:${snapshots.tasks?.contextGeneration ?? 0}:refresh`, operation: data?.operation },
+          { module, source: `tasks:${snapshots.tasks?.contextGeneration ?? 0}:movement`, kind: "movement", operation: data?.movement },
         ];
       }
       return [{ module, source: module, provider: undefined, operation: data?.operation }];
     });
     untrack(() => {
+      const activeTaskSources = new Set(current.filter(source => source.module === "tasks").map(source => source.source));
+      for (const key of Object.keys(entries)) {
+        if (key.startsWith("tasks:") && !activeTaskSources.has(key)) { timers.get(key)?.(); timers.delete(key); delete entries[key]; seen.delete(key); }
+      }
       for (const { module, source, provider, kind, message, operation } of current) {
         if (!operation) {
           timers.get(source)?.();
@@ -174,7 +178,7 @@
           entries[source] = undefined;
           continue;
         }
-        const key = `${operation.id}:${operation.state}`;
+        const key = `${operation.contextGeneration ?? 0}:${operation.id}:${operation.state}`;
         if (seen.get(source) === key) continue;
         seen.set(source, key);
         if (!initialized) continue;
@@ -184,11 +188,11 @@
         entries[source] = entry ?? undefined;
         if (!entry) continue;
         if (operation.state !== "running") {
-          timers.set(source, clock.after(4000, () => {
+          if (operation.state !== "unconfirmed") timers.set(source, clock.after(4000, () => {
             entries[source] = undefined;
             timers.delete(source);
           }));
-          if (kind === "transition" || operation.origin === "user" || ["failed", "recovered", "paused", "attention", "unavailable"].includes(operation.state)) {
+          if (kind === "transition" || operation.origin === "user" || ["failed", "recovered", "paused", "attention", "unavailable", "unconfirmed"].includes(operation.state)) {
             pendingAnnouncements.set(source, entry.text);
           }
         }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack, type Snippet } from "svelte";
-  import { MODULES, type AgentsData, type AiData, type GithubData, type TrelloData, type NetworkData, type SystemData, type Module, type Core, type Snapshot } from "./core";
+  import { MODULES, type AgentsData, type AiData, type GithubData, type TasksData, type NetworkData, type SystemData, type Module, type Core, type Snapshot } from "./core";
   import OperationsStrip from "./OperationsStrip.svelte";
   import AgentsModule from "./agents/AgentsModule.svelte";
   import AiModule from "./ai/AiModule.svelte";
@@ -8,7 +8,7 @@
   import GithubModule from "./github/GithubModule.svelte";
   import NetworkModule from "./network/NetworkModule.svelte";
   import SystemModule from "./system/SystemModule.svelte";
-  import TrelloModule from "./trello/TrelloModule.svelte";
+  import TasksModule from "./tasks/TasksModule.svelte";
   import { AppearanceState } from "./settings/appearance.svelte";
   import Settings from "./settings/Settings.svelte";
   import { t } from "./strings";
@@ -25,6 +25,7 @@
 
   /** First opening: Settings shows the welcome until a section is chosen or the user goes back to the panel. */
   let welcome = $state(false);
+  let preferencesError = $state<string | null>(null);
   const appearance = new AppearanceState();
   let nativeVisible = $state(false);
   let appearanceRestored = $state(false);
@@ -122,9 +123,9 @@
   }
 
   const NO_AI_READING: AiData = { refreshing: false, codex: { state: "empty", plan: null, reading: null } };
-  const bodies: Record<Module, Snippet> = { ai, agents, github, trello, network, system };
+  const bodies: Record<Module, Snippet> = { ai, agents, github, tasks, network, system };
 
-  const supportingModules: Module[] = ["github", "network", "trello", "system"];
+  const supportingModules: Module[] = ["github", "network", "tasks", "system"];
   const agentsData = $derived((snapshots.agents?.data as AgentsData | undefined) ?? null);
 
   /** The free height of the "IA e Agentes" card goes to its dials: no empty strip between or after the blocks. */
@@ -201,6 +202,7 @@
       initial.snapshots.forEach(receive);
       pendingSnapshots.splice(0).forEach(receive);
       unavailableModules = initial.unavailableModules ?? [];
+      preferencesError = initial.preferencesError ?? null;
       if (initial.appearance) appearance.preference = initial.appearance;
       appearance.desktop ??= initial.systemTheme ?? null;
       appearanceRestored = true;
@@ -261,10 +263,9 @@
   <GithubModule data={(snapshots.github?.data as GithubData | undefined) ?? null} refresh={() => core.refreshGithub?.()} configure={() => openSettings("github")} />
 {/snippet}
 
-{#snippet trello()}
-  <TrelloModule data={(snapshots.trello?.data as TrelloData | undefined) ?? null} refresh={() => core.refreshTrello?.()}
-    configure={() => openSettings("trello")} openCard={(url) => core.openTrelloCard?.(url)}
-    moveCard={(card, list) => core.moveTrelloCard?.(card, list) ?? Promise.reject(new Error("unavailable"))} />
+{#snippet tasks()}
+  <TasksModule data={(snapshots.tasks?.data as TasksData | undefined) ?? null} generation={snapshots.tasks?.contextGeneration ?? 0}
+    {core} configure={() => openSettings("tasks")} />
 {/snippet}
 
 {#snippet network()}
@@ -303,6 +304,7 @@
   </header>
 
   {#if recovery}<p role="status">Preferências não restauradas; usando valores padrão.</p>{/if}
+  {#if preferencesError}<p role="alert">{preferencesError === "futureSchema" ? "Suas preferências foram criadas por uma versão mais recente. Atualize o aplicativo para alterá-las." : "Não foi possível carregar suas preferências com segurança. O arquivo salvo foi preservado."}</p>{/if}
   <div class="workspace">
     <main class="scroller" bind:this={scroller} class:covered={area === "settings"}
       inert={area === "settings"} aria-hidden={area === "settings" ? "true" : undefined}>
@@ -353,11 +355,11 @@
   .scroller { height: 100%; overflow: auto; }
   .scroller.covered { visibility: hidden; }
   /* The grid takes the whole Panel height: no empty strip at the bottom of the screen. */
-  .composition { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)); grid-template-areas: "intelligence github network" "intelligence trello system"; gap: 12px; align-items: stretch; }
+  .composition { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)); grid-template-areas: "intelligence github network" "intelligence tasks system"; gap: 12px; align-items: stretch; }
   .intelligence { grid-area: intelligence; display: flex; flex-direction: column; }
   .composition > :global(.github) { grid-area: github; }
   .composition > :global(.network) { grid-area: network; }
-  .composition > :global(.trello) { grid-area: trello; }
+  .composition > :global(.tasks) { grid-area: tasks; }
   .composition > :global(.system) { grid-area: system; }
 
   /* One card per module, except IA and Agents, which share the intelligence card. */
@@ -371,16 +373,16 @@
   .card.intelligence { --module-band: var(--band-lavender); }
   .card.github { --module-band: var(--band-steel); }
   .card.system { --module-band: var(--band-lavender); }
-  .card.trello { --module-band: var(--band-amber); }
+  .card.tasks { --module-band: var(--band-amber); }
   .card.network { --module-band: var(--band-blue); }
   .module { min-width: 0; display: flex; flex-direction: column; scroll-margin-top: 4px; overflow-wrap: anywhere; }
   .module:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   @media (max-width: 950px) {
-    .composition { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "intelligence intelligence" "github network" "trello system"; }
+    .composition { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "intelligence intelligence" "github network" "tasks system"; }
   }
   @media (max-width: 650px) {
     .panel { padding: 4px; }
-    .composition { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intelligence" "github" "network" "trello" "system"; }
+    .composition { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intelligence" "github" "network" "tasks" "system"; }
   }
 </style>

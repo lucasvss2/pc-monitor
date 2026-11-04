@@ -46,9 +46,10 @@ impl Default for VersionCheck {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct Preferences {
+    schema_version: u64,
     /// Last module chosen in the panel navigation; independent from visibility.
     #[serde(alias = "lastModule", alias = "ultimoModulo")]
     last_anchor: Module,
@@ -60,6 +61,76 @@ struct Preferences {
     welcomed: bool,
     appearance: Appearance,
     version_check: VersionCheck,
+    #[serde(flatten)]
+    extra: std::collections::BTreeMap<String, serde_json::Value>,
+}
+impl Default for Preferences {
+    fn default() -> Self {
+        Self {
+            schema_version: 2,
+            last_anchor: Module::default(),
+            agent_notifications: Default::default(),
+            initialized: false,
+            welcomed: false,
+            appearance: Default::default(),
+            version_check: Default::default(),
+            extra: Default::default(),
+        }
+    }
+}
+fn field<T: serde::de::DeserializeOwned>(value: &serde_json::Value, default: T) -> T {
+    serde_json::from_value(value.clone()).unwrap_or(default)
+}
+impl Preferences {
+    fn load(value: &serde_json::Value) -> Self {
+        let mut result = Self::default();
+        result.last_anchor = field(
+            value
+                .get("lastAnchor")
+                .or_else(|| value.get("lastModule"))
+                .or_else(|| value.get("ultimoModulo"))
+                .unwrap_or(&serde_json::Value::Null),
+            result.last_anchor,
+        );
+        result.initialized = field(
+            value
+                .get("initialized")
+                .or_else(|| value.get("inicializado"))
+                .unwrap_or(&serde_json::Value::Null),
+            false,
+        );
+        result.welcomed = field(&value["welcomed"], false);
+        result.appearance.theme = field(&value["appearance"]["theme"], Theme::System);
+        result.appearance.reduce_motion = field(&value["appearance"]["reduceMotion"], false);
+        let notifications = &value["agentNotifications"];
+        result.agent_notifications.waiting = field(&notifications["waiting"], true);
+        result.agent_notifications.done = field(&notifications["done"], true);
+        result.agent_notifications.failed = field(&notifications["failed"], true);
+        result.version_check.enabled = field(&value["versionCheck"]["enabled"], true);
+        result.version_check.checked_at = field(&value["versionCheck"]["checkedAt"], None);
+        result.version_check.available = field(&value["versionCheck"]["available"], None);
+        if let Some(object) = value.as_object() {
+            for (key, value) in object {
+                if ![
+                    "schemaVersion",
+                    "lastAnchor",
+                    "lastModule",
+                    "ultimoModulo",
+                    "initialized",
+                    "inicializado",
+                    "welcomed",
+                    "appearance",
+                    "agentNotifications",
+                    "versionCheck",
+                ]
+                .contains(&key.as_str())
+                {
+                    result.extra.insert(key.clone(), value.clone());
+                }
+            }
+        }
+        result
+    }
 }
 
 /// Core panel state: current visibility and preferences persisted between launches.
@@ -70,6 +141,7 @@ pub struct AppState {
     agent_target: Option<String>,
     /// Modules intersecting the visible panel area; empty when hidden or in Settings.
     visible: BTreeSet<Module>,
+    preferences_error: Option<&'static str>,
 }
 
 impl AppState {
@@ -79,18 +151,49 @@ impl AppState {
     }
 
     pub fn with_storage(storage: impl Storage + 'static) -> Self {
-        let preferences: Preferences = storage
-            .read(PREFERENCES_FILE)
+        let loaded = storage.read(PREFERENCES_FILE);
+        let value = loaded
+            .as_ref()
             .ok()
-            .and_then(|json| serde_json::from_str(&json).ok())
-            .unwrap_or_default();
-        AppState {
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(text).ok())
+            .filter(serde_json::Value::is_object);
+        let preferences_error = if value
+            .as_ref()
+            .is_some_and(|v| v["schemaVersion"].as_u64().is_some_and(|v| v > 2))
+        {
+            Some("futureSchema")
+        } else if value.is_none()
+            && !loaded
+                .as_ref()
+                .is_err_and(|e| e.kind() == std::io::ErrorKind::NotFound)
+        {
+            Some("unreadable")
+        } else {
+            None
+        };
+        let mut preferences = value.as_ref().map(Preferences::load).unwrap_or_default();
+        if preferences_error.is_some() {
+            preferences.initialized = true;
+            preferences.welcomed = true;
+        }
+        let mut state = AppState {
             storage: Box::new(storage),
             preferences,
             panel_open: false,
             agent_target: None,
             visible: BTreeSet::new(),
+            preferences_error,
+        };
+        if value.as_ref().is_some_and(|v| v["schemaVersion"] != 2)
+            && preferences_error.is_none()
+            && state.try_save().is_err()
+        {
+            state.preferences_error = Some("migrationFailed");
         }
+        state
+    }
+    pub fn preferences_error(&self) -> Option<&'static str> {
+        self.preferences_error
     }
 
     pub fn last_anchor(&self) -> Module {
@@ -241,8 +344,13 @@ impl AppState {
         }
     }
     fn try_save(&self) -> std::io::Result<()> {
+        if self.preferences_error.is_some() {
+            return Err(std::io::ErrorKind::Unsupported.into());
+        }
         let json = serde_json::to_string_pretty(&self.preferences)?;
-        self.storage.write(PREFERENCES_FILE, &json)
+        self.storage.write("preferencias.json.tmp", &json)?;
+        self.storage
+            .rename("preferencias.json.tmp", PREFERENCES_FILE)
     }
 
     fn save(&self) {
@@ -452,6 +560,7 @@ mod tests {
         assert_eq!(
             saved,
             serde_json::json!({
+                "schemaVersion": 2,
                 "lastAnchor": "system",
                 "initialized": true,
                 "agentNotifications": {"waiting": true, "done": true, "failed": true},
@@ -488,7 +597,7 @@ mod agent_notification_tests {
             Ok(())
         }
         fn rename(&self, _: &str, _: &str) -> io::Result<()> {
-            Err(io::ErrorKind::Unsupported.into())
+            Ok(())
         }
         fn remove(&self, _: &str) -> io::Result<()> {
             Err(io::ErrorKind::Unsupported.into())

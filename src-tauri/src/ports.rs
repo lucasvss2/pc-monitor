@@ -113,6 +113,10 @@ impl Files for RootFilesystem {
 /// Current time in epoch milliseconds.
 pub trait Clock: Send {
     fn now(&self) -> u64;
+    /// Scheduling and deadlines are independent from adjustments to civil time.
+    fn monotonic_ms(&self) -> u64 {
+        self.now()
+    }
     /// Local time-zone offset from UTC at an instant, in milliseconds; UTC unless overridden.
     fn utc_offset_ms(&self, _at: u64) -> i64 {
         0
@@ -122,6 +126,11 @@ pub trait Clock: Send {
 pub struct SystemClock;
 
 impl Clock for SystemClock {
+    fn monotonic_ms(&self) -> u64 {
+        static START: std::sync::LazyLock<std::time::Instant> =
+            std::sync::LazyLock::new(std::time::Instant::now);
+        START.elapsed().as_millis().min(u64::MAX as u128) as u64
+    }
     fn now(&self) -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)

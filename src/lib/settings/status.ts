@@ -1,4 +1,4 @@
-import type { AiData, GithubData, Module, Snapshot, TrelloData } from "../core";
+import type { AiData, GithubData, Module, Snapshot, TasksData } from "../core";
 
 export type ModuleStatus = "detected" | "needsSetup" | "notNeeded" | "checking";
 
@@ -22,6 +22,7 @@ export function moduleStatus(module: Module, snapshot: Snapshot | undefined): Mo
     if (data.credential) return "detected";
     return data.state === "missingGh" || data.state === "invalidCredential" ? "needsSetup" : "detected";
   }
-  const data = snapshot.data as TrelloData;
-  return ["missingCredential", "chooseBoard", "invalidCredential"].includes(data.state) ? "needsSetup" : "detected";
+  const data = snapshot.data as TasksData;
+  if (data.initializing) return "checking";
+  return ["missingCredential", "chooseBoard", "invalidCredential", "cleanupPending", "settingsUnavailable"].includes(data.state) ? "needsSetup" : "detected";
 }

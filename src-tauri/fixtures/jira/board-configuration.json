@@ -1,0 +1,48 @@
+{
+  "id": 42,
+  "name": "Quadro de exemplo",
+  "columnConfig": {
+    "columns": [
+      {
+        "name": "Coluna 1",
+        "statuses": [
+          {
+            "id": "10000"
+          }
+        ]
+      },
+      {
+        "name": "Coluna 2",
+        "statuses": [
+          {
+            "id": "10001"
+          }
+        ]
+      },
+      {
+        "name": "Coluna 3",
+        "statuses": [
+          {
+            "id": "10002"
+          }
+        ]
+      },
+      {
+        "name": "Coluna 4",
+        "statuses": [
+          {
+            "id": "10003"
+          }
+        ]
+      },
+      {
+        "name": "Coluna 5",
+        "statuses": [
+          {
+            "id": "10004"
+          }
+        ]
+      }
+    ]
+  }
+}

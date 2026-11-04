@@ -552,10 +552,11 @@ impl Persistence for SharedCache {
         persistence.save(&merged);
         *last = Some(merged);
     }
-    fn clear(&self, module: Module) {
+    fn clear(&self, module: Module) -> std::io::Result<()> {
         let mut guard = self.0.lock().unwrap();
-        guard.0.clear(module);
+        guard.0.clear(module)?;
         guard.1 = None;
+        Ok(())
     }
     fn log(&self, record: LogRecord) {
         self.0.lock().unwrap().0.log(record);

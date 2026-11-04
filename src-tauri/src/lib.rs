@@ -62,6 +62,7 @@ mod strings;
     )
 )]
 mod system;
+mod tasks;
 mod trello;
 
 use std::sync::Mutex;
@@ -161,13 +162,16 @@ pub fn run() {
             commands::set_claude_usage,
             commands::refresh_github,
             commands::save_github_token,
-            commands::refresh_trello,
-            commands::connect_trello,
-            commands::select_trello_board,
-            commands::disconnect_trello,
-            commands::open_trello_authorization,
-            commands::move_trello_card,
-            commands::open_trello_card,
+            commands::refresh_tasks,
+            commands::switch_task_provider,
+            commands::connect_tasks,
+            commands::select_task_board,
+            commands::disconnect_tasks,
+            commands::retry_task_cleanup,
+            commands::task_transitions,
+            commands::perform_task_action,
+            commands::open_task,
+            commands::authorize_trello,
             commands::open_trello_admin,
             commands::run_speed_test,
             commands::set_automatic_speed,

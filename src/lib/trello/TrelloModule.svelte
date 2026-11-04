@@ -4,16 +4,17 @@
   import type { TrelloData } from "../core";
   import { t, interpolate } from "../strings";
   import AbsentArea, { type Absence } from "../AbsentArea.svelte";
-  let { data, refresh, configure, openCard, moveCard }: {
+  let { data, refresh, configure, openCard, moveCard, embedded = false, canWrite = true }: {
     data: TrelloData | null; refresh: () => void; configure: () => void; openCard: (url: string) => void;
     /** Rejects when the core could not move the card. */
     moveCard: (card: string, list: string) => Promise<void>;
+    embedded?: boolean; canWrite?: boolean;
   } = $props();
   let now = $state(Date.now());
   /** Manual refreshes stay at least ten seconds apart. */
   let allowedAt = $state(0);
   let tipsDismissed = $state(false);
-  let titleActions: HTMLDivElement;
+  let titleActions = $state<HTMLDivElement>();
   onMount(() => {
     const timer = setInterval(() => now = Date.now(), 1000);
     function dismissDescription(event: KeyboardEvent) {
@@ -71,13 +72,14 @@
   let selected = $state<string | null>(null);
   let destination = $state("");
   /** Last move outcome, shown in the board and, after a failure, in the summary. */
-  let outcome = $state<{ kind: "moving" | "moved" | "failed"; text: string } | null>(null);
+  let outcome = $state<{ kind: "moving" | "moved" | "failed" | "unconfirmed"; text: string } | null>(null);
   /** Destination by card until the core answers; a settled move lasts until the next board. */
   let pending = $state<Record<string, { list: string; move: number; settled?: boolean }>>({});
   let moves = 0;
   $effect(() => {
     void data;
     untrack(() => {
+      if (outcome?.kind === "unconfirmed" && canWrite && data?.state === "ready" && data.movement?.state !== "unconfirmed") outcome = null;
       for (const card in pending) if (pending[card].settled) delete pending[card];
       // A refresh keeps the selection unless the card left the board.
       if (selected && !listOf(selected)) selected = null;
@@ -100,7 +102,7 @@
   const title = (card: { name: string }) => card.name || t.trello.hiddenTitle;
   const listOf = (card: string) => lists.find((list) => list.cards.some((c) => c.id === card))?.id;
   const nameOf = (list: string) => lists.find((l) => l.id === list)?.name ?? "";
-  const movable = $derived(data != null && !paused && data.state !== "invalidCredential");
+  const movable = $derived(canWrite && data != null && !paused && data.state !== "invalidCredential");
   const selectedList = $derived(selected ? listOf(selected) : undefined);
   const selectedCard = $derived(lists.flatMap((l) => l.cards).find((c) => c.id === selected));
   const plural = (count: number, one: string, many: string) => count === 1 ? one : interpolate(many, { count: String(count) });
@@ -200,10 +202,12 @@
         pending[card].settled = true;
         outcome = { kind: "moved", text: interpolate(t.trello.moved, { card: name, list: target }) };
       },
-      () => {
+      (error) => {
         if (!current()) return;
         delete pending[card];
-        outcome = { kind: "failed", text: interpolate(t.trello.moveFailedDetail, { card: name, list: originName }) };
+        outcome = error === "unconfirmed"
+          ? { kind: "unconfirmed", text: "Resultado não confirmado. Atualize o quadro antes de tentar novamente." }
+          : { kind: "failed", text: interpolate(t.trello.moveFailedDetail, { card: name, list: originName }) };
         columnEls[origin]?.scrollIntoView({ block: "nearest", inline: "nearest" });
         void refocusIfLost(card);
       },
@@ -254,7 +258,7 @@
   {/if}
 {/snippet}
 
-<header>
+{#if !embedded}<header>
   <h2 id="module-trello-title">{t.modules.trello}</h2>
   <div class="actions" bind:this={titleActions}>
     <span class="action-wrap" role="group" onpointerenter={() => tipsDismissed = false} onfocusin={() => tipsDismissed = false}>
@@ -267,7 +271,7 @@
       <span class="tip" hidden={tipsDismissed} id="trello-configure-description" role="tooltip">{t.trello.configureDescription}</span>
     </span>
   </div>
-</header>
+</header>{/if}
 
 <div class="trello" onfocusin={(event) => { if (restoringFocus) event.stopPropagation(); }}>
   {#if data?.refreshing}<small role="status" class="line">{t.trello.refreshing}</small>{/if}
@@ -283,7 +287,7 @@
     {#if data.lastSuccessAt != null && (data.state !== "ready" || paused)}
       <small class="line">{interpolate(t.trello.updatedAge, { age: age(data.lastSuccessAt) })}</small>
     {/if}
-    {#if outcome?.kind === "failed" && !detailOpen}<small role="alert" class="line alert">{outcome.text}</small>{/if}
+    {#if (outcome?.kind === "failed" || outcome?.kind === "unconfirmed") && !detailOpen}<small role="alert" class="line alert">{outcome.text}</small>{/if}
     <div class="summary" data-stale={old}>
       {#if data.board}
         <div class="board-summary"><b>{data.board.name}</b><span>{boardCounts}</span></div>
@@ -324,7 +328,7 @@
         <p>{movable ? t.trello.selectHint : t.trello.moveUnavailable}</p>
       {/if}
     </div>
-    {#if outcome?.kind === "failed"}
+    {#if outcome?.kind === "failed" || outcome?.kind === "unconfirmed"}
       <p role="alert" class="move-status failed">{outcome.text}</p>
     {:else}
       <p role="status" class="move-status">{outcome?.text ?? t.trello.noChange}</p>

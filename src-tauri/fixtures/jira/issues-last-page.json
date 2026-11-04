@@ -1,0 +1,26 @@
+{
+  "isLast": true,
+  "issues": [
+    {
+      "id": "29999",
+      "key": "EXM-101",
+      "fields": {
+        "summary": "Último item de exemplo",
+        "status": {
+          "id": "10000",
+          "name": "Estado de exemplo"
+        },
+        "issuetype": {
+          "name": "Tarefa"
+        },
+        "priority": {
+          "name": "Alta"
+        },
+        "assignee": {
+          "displayName": "Pessoa de exemplo"
+        },
+        "duedate": "2030-01-15"
+      }
+    }
+  ]
+}

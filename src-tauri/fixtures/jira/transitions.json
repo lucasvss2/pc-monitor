@@ -1,0 +1,54 @@
+{
+  "transitions": [
+    {
+      "id": "1",
+      "name": "Transição 1",
+      "to": {
+        "id": "10006",
+        "name": "Estado 10006"
+      },
+      "hasScreen": false,
+      "fields": {}
+    },
+    {
+      "id": "2",
+      "name": "Transição 2",
+      "to": {
+        "id": "10006",
+        "name": "Estado 10006"
+      },
+      "hasScreen": false,
+      "fields": {}
+    },
+    {
+      "id": "3",
+      "name": "Transição 3",
+      "to": {
+        "id": "10006",
+        "name": "Estado 10006"
+      },
+      "hasScreen": false,
+      "fields": {}
+    },
+    {
+      "id": "4",
+      "name": "Transição 4",
+      "to": {
+        "id": "10006",
+        "name": "Estado 10006"
+      },
+      "hasScreen": false,
+      "fields": {}
+    },
+    {
+      "id": "5",
+      "name": "Transição 5",
+      "to": {
+        "id": "10006",
+        "name": "Estado 10006"
+      },
+      "hasScreen": false,
+      "fields": {}
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import type { AgentsData, AiData, Core, GithubData, Module, NetworkData, Snapshot, TrelloData } from "../core";
+  import type { AgentsData, AiData, Core, GithubData, Module, NetworkData, Snapshot, TasksData } from "../core";
   import AgentSettings from "../agents/AgentSettings.svelte";
   import AiSettings from "../ai/AiSettings.svelte";
   import GithubSettings from "../github/GithubSettings.svelte";
   import NetworkSettings from "../network/NetworkSettings.svelte";
-  import TrelloSettings from "../trello/TrelloSettings.svelte";
+  import TasksSettings from "../tasks/TasksSettings.svelte";
   import { t } from "../strings";
   import type { AppearanceState } from "./appearance.svelte";
   import AppearanceSettings from "./AppearanceSettings.svelte";
@@ -26,7 +26,7 @@
   type Section = "general" | "appearance" | Exclude<Module, "system">;
   const GROUPS: { label: string; sections: Section[] }[] = [
     { label: t.settings.index.app, sections: ["general", "appearance"] },
-    { label: t.settings.index.modules, sections: ["ai", "agents", "github", "trello", "network"] },
+    { label: t.settings.index.modules, sections: ["ai", "agents", "github", "tasks", "network"] },
   ];
   const TITLES: Record<Section, string> = {
     general: t.settings.general.title,
@@ -34,7 +34,7 @@
     ai: t.modules.ai,
     agents: t.modules.agents,
     github: t.modules.github,
-    trello: t.modules.trello,
+    tasks: t.modules.tasks,
     network: t.modules.network,
   };
   const isSection = (value: string): value is Section => Object.hasOwn(TITLES, value);
@@ -134,12 +134,8 @@
         {:else if selected === "github"}
           <GithubSettings data={snapshots.github?.data as GithubData | undefined}
             save={core.saveGithubToken ?? unavailable("offline")} />
-        {:else if selected === "trello"}
-          <TrelloSettings data={snapshots.trello?.data as TrelloData | undefined}
-            connect={core.connectTrello ?? unavailable("offline")}
-            selectBoard={core.selectTrelloBoard ?? unavailable("offline")}
-            disconnect={core.disconnectTrello ?? unavailable("offline")}
-            openAdmin={() => core.openTrelloAdmin?.()} authorize={(key) => core.openTrelloAuthorization?.(key)} />
+        {:else if selected === "tasks"}
+          <TasksSettings data={snapshots.tasks?.data as TasksData | undefined} generation={snapshots.tasks?.contextGeneration ?? 0} {core} />
         {:else}
           <NetworkSettings data={snapshots.network?.data as NetworkData | undefined}
             setAutomaticSpeed={(enabled) => core.setAutomaticSpeed?.(enabled)} />
@@ -237,7 +233,7 @@
   .general, .welcome { --card-band: var(--band-amber); }
   .appearance { --card-band: var(--band-lavender); }
   .agents { --card-band: var(--band-violet); }
-  .trello { --card-band: var(--band-amber); }
+  .tasks { --card-band: var(--band-amber); }
   .github { --card-band: var(--band-steel); }
   .network { --card-band: var(--band-blue); }
 
