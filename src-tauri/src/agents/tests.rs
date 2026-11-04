@@ -599,8 +599,8 @@ fn codex_hook_without_polling_is_not_closed_by_an_unrelated_claude_read() {
     let process = Process(Arc::new(Mutex::new(Ok("[]".into()))));
     let clock = FakeClock::at(1800000000000);
     let notifications = Notifications::default();
-    let mut monitor = Monitor::new(process, clock.clone())
-        .with_notifications(notifications.clone());
+    let mut monitor =
+        Monitor::new(process, clock.clone()).with_notifications(notifications.clone());
     monitor.hooks_enabled = true;
     monitor.discovery_partial = true;
     let baseline = monitor.step().unwrap().last_success_at;
