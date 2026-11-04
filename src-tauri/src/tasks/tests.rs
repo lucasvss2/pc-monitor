@@ -142,6 +142,8 @@ impl crate::trello::TrelloApi for TrelloHttp {
         Ok(())
     }
 }
+type WriteGate = (std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>);
+
 #[derive(Clone, Default)]
 struct JiraHttp {
     requests: Arc<Mutex<Vec<String>>>,
@@ -149,7 +151,7 @@ struct JiraHttp {
     write_failure: Arc<Mutex<Option<HttpError>>>,
     required: Arc<Mutex<bool>>,
     cyclic: Arc<Mutex<bool>>,
-    write_gate: Arc<Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>>,
+    write_gate: Arc<Mutex<Option<WriteGate>>>,
 }
 impl jira::JiraApi for JiraHttp {
     fn get(
