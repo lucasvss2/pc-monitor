@@ -135,14 +135,17 @@ export interface Core {
   setAppearance?(appearance: Appearance): Promise<void>;
 }
 
+let snapshotListenersReady: Promise<unknown> = Promise.resolve();
 export const tauriCore: Core = {
   listenAgentTarget: (cb) => listen<string>("agent-target", (e) => cb(e.payload)),
   setAgentHooks: (enabled) => invoke<void>("set_agent_hooks", { enabled }),
   setAgentNotifications: (preferences) => void invoke("set_agent_notifications", { preferences }),
   listenPanelVisibility: (cb) => listen<boolean>("panel-visibility", (e) => cb(e.payload)),
-  initialState: () => invoke<InitialState>("initial_state"),
+  async initialState() { await snapshotListenersReady; return invoke<InitialState>("initial_state"); },
   async listenSnapshots(cb) {
-    const stops = await Promise.all(MODULES.map((m) => listen<Snapshot>(`snapshot:${m}`, (e) => cb(e.payload))));
+    const registration = Promise.all(MODULES.map((m) => listen<Snapshot>(`snapshot:${m}`, (e) => cb(e.payload))));
+    snapshotListenersReady = registration;
+    const stops = await registration;
     return () => stops.forEach((stop) => stop());
   },
   reportVisibleModules: (modules) => void invoke("report_visible_modules", { modules }),

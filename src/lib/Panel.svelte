@@ -56,7 +56,8 @@
   let bootstrapped = false;
   const pendingSnapshots: Snapshot[] = [];
   function receive(s: Snapshot) {
-    if (!bootstrapped) { pendingSnapshots.push(s); return; }
+    // Legacy snapshots exist only in UI fixtures; native events wait for runtime identity.
+    if (!bootstrapped && s.runtimeId) { pendingSnapshots.push(s); return; }
     if (runtimeId && s.runtimeId !== runtimeId) return;
     const previous = snapshots[s.module];
     if (previous?.revision !== undefined && s.revision !== undefined && s.revision <= previous.revision) return;
@@ -188,11 +189,11 @@
       nativeVisible = visible;
       syncVisibility();
     });
-    const stop = Promise.resolve().then(() => core.listenSnapshots((snapshot) => { if (!disposed) receive(snapshot); }));
+    const stop = (async () => core.listenSnapshots((snapshot) => { if (!disposed) receive(snapshot); }))();
     const stopTarget = core.listenAgentTarget?.((session) => { if (!disposed) void target(session); });
     const stopMedia = appearance.watch();
     const stopTheme = core.listenSystemTheme?.((theme) => { if (!disposed) appearance.desktop = theme; });
-    stop.then(() => core.initialState()).then(async (initial) => {
+    core.initialState().then(async (initial) => {
       if (disposed) return;
       if (!visibilityReceived) nativeVisible = initial.panelVisible ?? false;
       runtimeId = initial.runtimeId;
