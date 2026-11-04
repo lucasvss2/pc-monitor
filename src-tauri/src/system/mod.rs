@@ -238,7 +238,7 @@ impl Collector {
     /// Fixture mode: no collection; events are dropped.
     #[cfg(feature = "fixtures")]
     pub fn detached() -> Self {
-        Collector(mpsc::channel().0)
+        Collector(std::sync::mpsc::channel().0)
     }
 
     pub fn resume(&self) {

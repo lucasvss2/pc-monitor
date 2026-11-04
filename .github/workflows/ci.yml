@@ -81,11 +81,13 @@ jobs:
         working-directory: src-tauri
         run: cargo test --locked native_vault_roundtrip_is_local_machine_and_cleanup_is_idempotent -- --ignored
 
-      - name: fixture mode (development only)
+      - name: fixture mode clippy (development only)
         working-directory: src-tauri
-        run: |
-          cargo clippy --all-targets --locked --features fixtures -- -D warnings
-          cargo test --locked --features fixtures --lib fixtures
+        run: cargo clippy --all-targets --locked --features fixtures -- -D warnings
+
+      - name: fixture mode tests (development only)
+        working-directory: src-tauri
+        run: cargo test --locked --features fixtures --lib fixtures
 
       - name: Tauri build without bundling
         run: npm run tauri -- build --no-bundle

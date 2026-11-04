@@ -139,3 +139,24 @@ Gera `<prefixo>.png` e `<prefixo>.json` e sai com erro se a captura falhar. A in
 ## Imagens sanitizadas
 
 Para imagens do app nativo com dados de exemplo, inicie `npm run dev:fixtures` e use a captura nativa acima, com saída temporária fora do repositório. Isso captura a UI real do Tauri alimentada por snapshots de exemplo; identifique esse modo na legenda, sem apresentar o protótipo HTML como versão distribuída.
+
+## Base Windows experimental
+
+A adaptação Windows tem acompanhamento e limites em [Validação da base Windows](windows-validacao.md). O suporte oficial completo ainda depende das etapas e do aceite da especificação; o incremento não habilita por suposição os coletores Linux. A interface identifica Módulos indisponíveis e descoberta parcial de sessões.
+
+Para compilar nativamente, use MSVC x64 com Windows SDK, Rust estável, Node.js 24 e o WebView2 necessário ao Tauri. Da raiz, em PowerShell:
+
+```powershell
+npm ci
+npm run check
+npm test
+npm run tauri -- build --no-bundle
+```
+
+O build acima gera o executável; não publica release nem instalador. A configuração Windows seleciona NSIS por usuário para o empacotamento posterior. Sem cofre nativo real, o app recusa salvar credenciais. A prova explícita do cofre usa somente uma entrada sintética isolada e a remove ao terminar:
+
+```powershell
+cargo test --locked --manifest-path src-tauri/Cargo.toml native_vault_roundtrip_is_local_machine_and_cleanup_is_idempotent -- --ignored
+```
+
+Os demais testes não instalam hooks na conta real; usam diretórios temporários. A captura GTK descrita neste guia continua exclusiva do Linux. Se uma política impedir compilar ou executar binários sem assinatura, preserve as proteções e valide em um ambiente compatível; não trate compilação cruzada ou testes de navegador como prova nativa Windows.
