@@ -3,7 +3,6 @@ use crate::persistence::Storage;
 use std::{io, path::PathBuf};
 pub struct Execution {
     pub executable: PathBuf,
-    pub appimage: Option<PathBuf>,
 }
 pub fn enabled(storage: &impl Storage) -> bool {
     storage.read("startup").is_ok()
