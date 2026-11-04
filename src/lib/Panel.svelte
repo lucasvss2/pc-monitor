@@ -293,10 +293,10 @@
 {/snippet}
 
 <div class="panel">
-  <header class="toolbar">
-    <div class="bridge"><span></span><span></span><span></span><div class="signature"><strong>KVOJPS</strong></div></div>
-    <div class="utility">
-      <button class="settings" aria-current={area === "settings" ? "page" : undefined} onclick={() => openSettings()}><span aria-hidden="true">⚙</span> {t.settings.title}</button>
+  <header class="toolbar" data-tauri-drag-region title={t.header.movePanelHint}>
+    <div class="bridge" data-tauri-drag-region><span data-tauri-drag-region></span><span data-tauri-drag-region></span><span data-tauri-drag-region></span><div class="signature" data-tauri-drag-region><strong data-tauri-drag-region>KVOJPS</strong></div></div>
+    <div class="utility" data-tauri-drag-region>
+      <button class="settings" title={t.settings.title} aria-current={area === "settings" ? "page" : undefined} onclick={() => openSettings()}><span aria-hidden="true">⚙</span> {t.settings.title}</button>
       <button class="close" aria-label={t.header.closePanel} title={t.header.closePanelHint} onclick={() => core.closePanel()}>
         <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
       </button>
@@ -337,7 +337,8 @@
     font-size: 13px;
   }
 
-  .toolbar { flex: none; }
+  .toolbar { flex: none; cursor: move; user-select: none; }
+  .utility button { cursor: pointer; }
   .bridge { position: relative; display: flex; gap: 7px; height: 6px; margin-bottom: 5px; }
   .signature { position: absolute; top: -6px; left: 22px; height: 16px; padding: 0 10px; background: var(--bg); transform: skew(-12deg); }
   .signature strong { display: block; font: 600 11px monospace; letter-spacing: .2em; transform: skew(12deg); color: var(--accent); }

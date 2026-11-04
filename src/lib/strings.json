@@ -71,6 +71,7 @@
     "codexPlan": "Codex detectado · plano {plan}"
   },
   "header": {
+    "movePanelHint": "Arraste pelo cabeçalho para mover a janela",
     "closePanel": "Fechar Painel",
     "closePanelHint": "Fechar Painel e manter o Indicador ativo",
     "updated": "atualizado {time}",

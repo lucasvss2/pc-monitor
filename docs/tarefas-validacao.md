@@ -52,3 +52,7 @@ Este roteiro exige uma conta e um item de teste com autorização para alteraç�
 8. Conferir somente categorias e resultados de privacidade, sem imprimir segredos ou conteúdo do quadro. Remover credenciais de teste pelo aplicativo e arquivos/instalações temporários ao encerrar. Preservar configurações anteriores e dados de terceiros.
 
 Nenhum desses passos com alteração real foi executado nesta implementação. O roteiro anterior de Windows permanece separado em [windows-validacao.md](windows-validacao.md).
+
+## Rodada assistida Windows 11
+
+O [ticket de validação gráfica](../.scratch/tasks-jira/issues/04-windows-graphical.md) registra a sessão em andamento. O usuário relatou perda do formulário ao clicar fora e revisou a regra para manter o Painel aberto até X/Escape. A correção `5b4034d` passou integralmente na [CI 41919208165](https://github.com/lucasvss2/pc-monitor/actions/runs/41919208165), incluindo regressão de foco nos dois SOs, 391 testes UI e builds de produção. A nova versão foi preparada e aberta após autorização; aceite visual e conexão/troca de fontes permanecem separados da prova automatizada. Credenciais são informadas somente pelo usuário no aplicativo, sem capturas brutas.

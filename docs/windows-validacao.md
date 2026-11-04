@@ -20,7 +20,7 @@ Durante este incremento, os coletores ainda inativos no Windows e suas portas pr
 
 Registrar versão de SO/app, cenário, resultado e limitação sem valores privados ou capturas brutas. Usar sessões/projetos de exemplo e seguir [sanitização](agents/sanitizacao.md).
 
-1. Clique esquerdo na bandeja abre/ativa o Painel existente sem outra instância; direito abre menu. Fechar/perder foco no completo livre preserva o Indicador. Início automático é opcional e silencioso.
+1. Clique esquerdo na bandeja abre/ativa o Painel existente sem outra instância; direito abre menu. Pela revisão de foco aprovada durante o aceite de Tarefas, clicar fora mantém o Painel aberto, inclusive nas Configurações. X/Escape fecham o Painel preservando o Indicador; Escape resolve primeiro um diálogo interno. Início automático é opcional e silencioso.
 2. Confirmar recusa sem cofre e roundtrip de credencial sintética no Credential Manager local. Não usar nem imprimir credenciais reais como evidência.
 3. Após clique explícito nas Configurações, instalar hooks para CLIs de teste. Conferir preservação de terceiros, evento real e reversão. Histórico sem processo vivo não valida detecção; não ampliar cobertura antes de medir o adaptador Windows.
 4. Gerar evento de atenção de exemplo. Notificações mostram apenas fonte/evento/estado/duração; nomes de projeto/sessão e conteúdo ficam fora do texto e dos argumentos de ativação.

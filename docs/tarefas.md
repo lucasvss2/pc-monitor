@@ -8,6 +8,8 @@ Abra **Configurações → Tarefas** e selecione o provedor. No Trello, use chav
 
 O Painel permanece aberto ao alternar para outro aplicativo, inclusive durante o preenchimento das Configurações. X ou Escape fecham o Painel; Escape fecha primeiro um diálogo interno aberto. A ação Sair no Indicador encerra o aplicativo.
 
+Arraste as áreas livres do cabeçalho ou o logotipo para reposicionar a janela. Configurações e Fechar continuam funcionando como botões.
+
 Para Jira, a integração inicial atende **Jira Cloud**, no endereço raiz HTTPS de um site `*.atlassian.net`. Instalações próprias e domínios personalizados ficam fora deste recorte. Informe site, e-mail da conta e um token pessoal de API compatível com autenticação básica no próprio site. A [documentação da Atlassian](https://developer.atlassian.com/cloud/jira/platform/basic-auth-for-rest-apis/) explica como criar o token. Não cole credenciais em tickets, logs ou chats. O token é apagado do campo ao enviar; se a conexão falhar, será necessário informá-lo novamente.
 
 O aplicativo valida a conta e lista seus quadros acessíveis. Selecione o quadro desejado. A leitura segue o conteúdo e as colunas que o serviço define para esse quadro, incluindo todas as páginas; não usa uma consulta genérica do projeto. Restrições de permissão e configuração do Jira continuam valendo. O acesso concedido a conectores de outros aplicativos não conecta o monitor.
