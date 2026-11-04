@@ -1,7 +1,7 @@
 # Painel Windows não abre pelo Indicador
 
-Status: ready-for-agent
-Assignee: Codex
+Status: ready-for-human
+Assignee: maintainer
 Parent: ../spec.md
 
 ## Sintoma e reprodução
@@ -38,3 +38,17 @@ A CI de `461ad48` passou nos dois SOs. No Windows 11, a segunda abertura produzi
 A criação não ficou presa no builder nesta reprodução. O caminho de perda de foco fechou a janela ainda oculta, antes do `PageLoadEvent::Finished` que a apresentaria. A correção em avaliação ignora `Focused(false)` no Windows enquanto a janela está invisível; eventos após apresentação conservam o comportamento existente. O restante dos callbacks não foi alterado.
 
 Não há seam automatizado atual que atravesse criação WebView2, mensagens reais de foco e carregamento da página. Um teste unitário de booleanos não reproduziria a falha. A regressão nesta etapa é o loop nativo original, complementado por clique real e reabertura após perda de foco; a lacuna de automação gráfica permanece explícita.
+
+### Resultado gráfico da correção
+
+A [CI de a055512](https://github.com/lucasvss2/pc-monitor/actions/runs/41839042788) passou integralmente nos dois SOs. A repetição nativa mudou de zero para uma janela visível `kvojps-monitor`, com uma instância do processo. A automação leu a árvore de acessibilidade e inspecionou visualmente a apresentação das Configurações, sem conteúdo pessoal e sem gravar captura no repositório. A sequência observada passou por `build finished` sem o fechamento prematuro anterior.
+
+O teste seguinte ativou uma janela existente do Firefox para causar perda de foco. A automação foi interrompida pelo mecanismo de Computer Use porque a aplicação de política de URLs não é suportada nesse navegador Windows. Nenhuma interação posterior pela automação foi realizada. Não há aceite completo de perda de foco/reabertura, clique real no Indicador após a correção, menu direito, hooks reais, banner/Central, cofre gráfico, início automático ou suspensão/retomada.
+
+Os seis marcadores temporários foram removidos do código. O teste nativo anterior fornece o vermelho/verde para a abertura inicial; falta repetir os demais cenários e o EXE sem instrumentação numa próxima sessão. O ticket permanece `ready-for-human` para esse aceite, sem declarar a validação gráfica inteira concluída.
+
+### Limpeza desta sessão
+
+Instância de teste encerrada; nenhum processo do monitor permaneceu. Removidos os EXEs temporários das rodadas utilizadas, logs privados, instalador e instalação Rust isolada usados neste trabalho. Também foram removidos os registros COM/AppUserModelId cuja linha de ativação apontava exatamente para o EXE temporário descartado, depois de confirmar ausência de instância ativa. Nenhum registro de inicialização automática foi criado. Configurações pessoais de hooks e credenciais não foram alteradas.
+
+Não restaram diretórios temporários `pc-monitor-*` utilizados nesta sessão entre os alvos conferidos. Código, tickets e dependências do projeto em uso foram preservados. O artefato da CI continua disponível conforme sua retenção; uma próxima validação deve baixar o artefato correspondente à fonte sem instrumentação.

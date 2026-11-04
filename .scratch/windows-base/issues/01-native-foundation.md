@@ -61,3 +61,5 @@ Revisão de publicação final: diffs do incremento e evidências em `.scratch/`
 ### Início do aceite gráfico — 04/11/2026
 
 Indicador visível confirmado pelo usuário, mas o Painel não abriu no clique esquerdo nem na segunda execução. Aceite interrompido antes dos cenários dependentes. Diagnóstico em [Painel Windows não abre pelo Indicador](02-panel-opening.md); os resultados automáticos anteriores continuam válidos, sem substituir este cenário reprovado.
+
+Após a correção de foco em `a055512`, o Painel abriu e sua interface foi inspecionada no Windows 11. A sessão de Computer Use foi interrompida ao ativar Firefox por falta de suporte à aplicação de política de URLs nesse navegador. Restante do aceite gráfico pendente; detalhes e limpeza no [ticket do Painel](02-panel-opening.md).

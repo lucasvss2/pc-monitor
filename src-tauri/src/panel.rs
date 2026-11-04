@@ -36,15 +36,8 @@ pub fn open(app: &AppHandle) {
 /// Indicator activation runs on the GTK thread so the compositor's token can be
 /// assigned before showing or focusing either a new or an existing window.
 pub fn open_with_activation_token(app: &AppHandle, token: Option<&str>) {
-    #[cfg(windows)]
-    eprintln!(
-        "[DEBUG-panel-1104] open entered main={}",
-        std::thread::current().name() == Some("main")
-    );
     app.state::<Mutex<AppState>>().lock().unwrap().open_panel();
     collection::visibility_changed(app);
-    #[cfg(windows)]
-    eprintln!("[DEBUG-panel-1104] state ready");
     if let Some(window) = app.get_webview_window(LABEL) {
         set_activation_token(&window, token);
         fit(&window);
@@ -65,8 +58,6 @@ pub fn open_with_activation_token(app: &AppHandle, token: Option<&str>) {
         .expect("panel window missing from tauri.conf.json");
     let mut builder = match WebviewWindowBuilder::from_config(app, config) {
         Ok(builder) => builder.on_page_load(|window, payload| {
-            #[cfg(windows)]
-            eprintln!("[DEBUG-panel-1104] page event {:?}", payload.event());
             // The first visible frame already contains the opening composition.
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
                 let _ = window.show();
@@ -86,12 +77,8 @@ pub fn open_with_activation_token(app: &AppHandle, token: Option<&str>) {
         let size = work_area_size(&monitor, margin).to_logical::<f64>(monitor.scale_factor());
         builder = builder.inner_size(size.width, size.height);
     }
-    #[cfg(windows)]
-    eprintln!("[DEBUG-panel-1104] build starting");
     match builder.build() {
         Ok(window) => {
-            #[cfg(windows)]
-            eprintln!("[DEBUG-panel-1104] build finished");
             set_activation_token(&window, token);
             learn_margin(&window);
             fit(&window);
@@ -196,8 +183,6 @@ fn panel_size(width: u32, height: u32, scale: f64, margin: (f64, f64)) -> (u32, 
 }
 
 pub fn close(app: &AppHandle) {
-    #[cfg(windows)]
-    eprintln!("[DEBUG-panel-1104] close entered");
     app.state::<Mutex<AppState>>().lock().unwrap().close_panel();
     collection::visibility_changed(app);
     if let Some(window) = app.get_webview_window(LABEL) {
