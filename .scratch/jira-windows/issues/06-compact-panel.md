@@ -83,12 +83,14 @@ Modo e Fixação do Painel são preferências independentes. No Windows, fixar f
 | --- | --- | --- |
 | Reduzido | Desligada | Permanece aberto; pode ficar atrás de outras janelas. |
 | Reduzido | Ligada | Permanece aberto e no topo de janelas comuns. |
-| Completo | Desligada | Fecha o Painel, mantendo o app no Indicador. |
+| Completo | Desligada | Permanece aberto; pode ficar atrás de outras janelas. |
 | Completo | Ligada | Permanece aberto e no topo de janelas comuns. |
 
 Fechar explicitamente continua possível com fixação ativa. Escape fecha primeiro um diálogo interno, quando houver, preservando seu tratamento de teclado; sem diálogo, pode fechar o Painel. Reabrir pelo Indicador restaura a apresentação lembrada. Fixação não autoriza o app a retomar foco periodicamente enquanto o usuário trabalha em outro aplicativo. Erro ao aplicar topmost não pode aparecer como sucesso do controle.
 
-No Ubuntu/GNOME/Wayland, “Manter no topo” fica explicitamente indisponível; não requer extensão nova nem afirma ter fixado sem suporte. O reduzido ainda permanece aberto ao perder foco e o completo livre mantém fechamento ao clicar fora. Posicionamento continua a cargo do compositor, conforme ADR 0001.
+No Ubuntu/GNOME/Wayland, “Manter no topo” fica explicitamente indisponível; não requer extensão nova nem afirma ter fixado sem suporte. Ambos os modos permanecem abertos ao perder foco. Posicionamento continua a cargo do compositor, conforme ADR 0001.
+
+Revisão aprovada em 04/11/2026 durante a validação de Tarefas: [manter sempre aberto; fechar pelo X ou Escape](10-panel-explicit-close.md). A matriz acima incorpora essa resposta mais recente; ela substitui o fechamento do completo desfixado registrado nas rodadas originais deste ticket. A prévia aprovada anteriormente permanece como evidência histórica, não como autoridade sobre a regra revisada.
 
 ### Preferências, posição e início
 

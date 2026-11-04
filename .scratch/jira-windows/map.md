@@ -27,6 +27,8 @@ Destino alcançado em 04/11/2026: [especificação para implementação](spec.md
 
 <!-- Somente índice de tickets resolvidos; detalhes e resposta vivem no ticket. -->
 
+- Revisão durante a implementação em 04/11/2026: [O Painel deve permanecer aberto ao perder foco?](issues/10-panel-explicit-close.md). O usuário escolheu manter sempre aberto e fechar pelo X ou Escape, substituindo o fechamento automático do completo desfixado. Especificação, matriz e ADR 0006 foram atualizados; a nova regra exige validação nativa.
+
 - [Quais contratos do Jira Cloud atendem ao board alvo?](issues/01-jira-cloud-api.md): APIs públicas permitem leitura/transições; modalidade do board e autenticação própria exigem contratos explícitos.
 - [Quais capacidades nativas do Windows substituem os adaptadores Linux?](issues/02-windows-platform.md): há candidatos nativos, com limites de métricas, cofre local e comportamento de janela que precisam entrar no contrato.
 - [Como acompanhar IA e Sessões de agente no Windows?](issues/03-windows-agents.md): execução nativa e WSL têm contratos distintos; os adaptadores atuais não comprovam cobertura global de sessões Windows.

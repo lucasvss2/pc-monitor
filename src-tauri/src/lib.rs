@@ -67,7 +67,7 @@ mod trello;
 
 use std::sync::Mutex;
 
-use tauri::{Manager, RunEvent, WindowEvent};
+use tauri::{Manager, RunEvent};
 
 use autostart::Execution;
 
@@ -130,13 +130,6 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() != panel::LABEL {
-                return;
-            }
-            // WebView2 can report focus loss before the first presentation.
-            if cfg!(windows)
-                && matches!(event, WindowEvent::Focused(false))
-                && !window.is_visible().unwrap_or(false)
-            {
                 return;
             }
             panel::handle_window_event(event, || panel::close(window.app_handle()));

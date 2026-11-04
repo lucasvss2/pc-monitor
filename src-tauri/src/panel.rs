@@ -21,13 +21,9 @@ pub const LABEL: &str = "panel";
 
 /// Native events share the same close path as the explicit UI command.
 pub fn handle_window_event(event: &tauri::WindowEvent, close: impl FnOnce()) {
-    match event {
-        tauri::WindowEvent::Focused(false) => close(),
-        tauri::WindowEvent::CloseRequested { api, .. } => {
-            api.prevent_close();
-            close();
-        }
-        _ => {}
+    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        api.prevent_close();
+        close();
     }
 }
 
