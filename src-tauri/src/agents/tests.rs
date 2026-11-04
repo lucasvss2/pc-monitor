@@ -594,6 +594,43 @@ fn hooks_publish_waiting_immediately_and_claude_polling_still_reconciles() {
     assert_eq!(data.closed.len(), 2);
 }
 
+#[test]
+fn codex_hook_without_polling_is_not_closed_by_an_unrelated_claude_read() {
+    let process = Process(Arc::new(Mutex::new(Ok("[]".into()))));
+    let clock = FakeClock::at(1800000000000);
+    let notifications = Notifications::default();
+    let mut monitor = Monitor::new(process, clock.clone())
+        .with_notifications(notifications.clone());
+    monitor.hooks_enabled = true;
+    monitor.discovery_partial = true;
+    let baseline = monitor.step().unwrap().last_success_at;
+    let event = |provider, id: &str, state| hooks::Metadata {
+        provider,
+        id: id.into(),
+        state,
+        tool: None,
+        cwd: "/tmp/example".into(),
+        interrupted: false,
+    };
+    monitor.hook(event(Provider::Codex, "synthetic-waiting", SessionState::Waiting));
+    monitor.hook(event(Provider::Claude, "synthetic-working", SessionState::Working));
+    for _ in 0..2 {
+        clock.advance(2000);
+        let data = monitor.step().unwrap();
+        assert_eq!(data.sessions.len(), 1);
+        assert_eq!(data.sessions[0].id, "codex:synthetic-waiting");
+        assert_eq!(data.sessions[0].state, SessionState::Waiting);
+        assert!(data.failed);
+        assert_eq!(data.last_success_at, baseline);
+        assert!(data.closed.iter().any(|s| s.id == "synthetic-working"));
+        assert!(notifications.1.lock().unwrap().is_empty());
+    }
+    let data = monitor.hook(event(Provider::Codex, "synthetic-waiting", SessionState::Closed));
+    assert!(data.sessions.is_empty());
+    assert!(data.closed.iter().any(|s| s.id == "codex:synthetic-waiting"));
+    assert_eq!(*notifications.1.lock().unwrap(), vec![1]);
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn codex_waiting_survives_polling_until_a_hook_or_rollout_finishes_the_turn() {
