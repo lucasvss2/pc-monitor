@@ -119,6 +119,11 @@ pub fn command(wrapper: &str) -> String {
         r#"$ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 function Invoke-StatusCommand($file, $arguments, $payload, $show) {{
+    # .NET Framework constructs stdin's StreamWriter from Console.InputEncoding.
+    # Keep the code page, but suppress its UTF-8 BOM before writing raw bytes.
+    if ([Console]::InputEncoding.CodePage -eq 65001) {{
+        [Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+    }}
     $info = New-Object System.Diagnostics.ProcessStartInfo
     $info.FileName = $file
     $info.Arguments = $arguments

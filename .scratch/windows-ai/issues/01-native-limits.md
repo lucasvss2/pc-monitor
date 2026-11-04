@@ -2,6 +2,7 @@
 
 Type: task
 Status: claimed
+Parent: ../spec.md
 
 ## Escopo
 
@@ -29,5 +30,7 @@ O coletor estava condicionado a Linux e IA figurava entre os Módulos indisponí
 - UI completa: 393 testes passaram; Svelte sem erros/avisos. O segundo teste novo falhou antes de corrigir o indicador Codex sem leitura.
 - CI [41929410363](https://github.com/lucasvss2/pc-monitor/actions/runs/41929410363), `495e833`: 270 testes Rust Windows passaram, dois ignorados; os dois testes nativos da status line falharam. Linux automatizado passou. Não há aceite gráfico Ubuntu nesta etapa.
 - A política local PowerShell é `Restricted`. O wrapper passou a usar um comando gerado em `EncodedCommand` que lê dados JSON; não executa código carregado de arquivo, não usa `Bypass`, não altera políticas.
-- Um harness temporário com entrada sintética encontrou emissão de `VoidTaskResult` no stdout. Após silenciar esse retorno, a saída anterior foi preservada, sem stderr. O EXE GUI anterior continuou sem copiar a entrada: a porta Windows agora lê o handle nativo real, mantendo prazo e limite. O harness não alterou a status line real e removeu seus arquivos.
+- Um harness temporário com entrada sintética encontrou emissão de `VoidTaskResult` no stdout. Após silenciar esse retorno, a saída anterior foi preservada, sem stderr, mas o cache não foi produzido. Isso sozinho não isolou uma falha de stdin. O harness não alterou a status line real e removeu seus arquivos.
 - Fontes Codex reais responderam a conta e limites na CLI `0.154.0`; apenas flags de disponibilidade/sucesso foram expostas. Claude Code ausente no PATH; nenhum arquivo de credencial Claude foi consultado.
+
+Na CI `41931513580`, o primeiro job Windows expirou no teste de hooks antes de alcançar a status line. Na repetição, hooks passaram e os testes da status line reproduziram falha de preservação da entrada/cache. O harness isolou 103 bytes enviados e 106 recebidos: o StreamWriter que o .NET Framework cria para stdin acrescentava BOM UTF-8. Mantendo a mesma code page e removendo somente o preâmbulo dessa instância de encoding, os 103 bytes chegaram intactos e o EXE GUI anterior gravou o cache sanitizado. A alteração experimental do leitor Windows foi revertida por não ser necessária para a causa confirmada. Nenhuma política ou code page foi mudada.
