@@ -19,6 +19,18 @@ use crate::state::AppState;
 
 pub const LABEL: &str = "panel";
 
+/// Native events share the same close path as the explicit UI command.
+pub fn handle_window_event(event: &tauri::WindowEvent, close: impl FnOnce()) {
+    match event {
+        tauri::WindowEvent::Focused(false) => close(),
+        tauri::WindowEvent::CloseRequested { api, .. } => {
+            api.prevent_close();
+            close();
+        }
+        _ => {}
+    }
+}
+
 /// Logical pixels the window takes from the size asked for; learned once per process.
 #[derive(Default)]
 pub struct Margin(Mutex<Option<(f64, f64)>>);
@@ -211,6 +223,16 @@ fn learn_margin(_: &WebviewWindow) {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn losing_focus_does_not_close_the_panel_or_discard_a_connection_draft() {
+        let closed = std::cell::Cell::new(false);
+        handle_window_event(&tauri::WindowEvent::Focused(false), || closed.set(true));
+        assert!(
+            !closed.get(),
+            "switching to another app must keep the panel open"
+        );
+    }
 
     #[test]
     fn panel_targets_logical_size_and_fits_scaled_work_area() {

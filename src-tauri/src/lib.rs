@@ -132,22 +132,14 @@ pub fn run() {
             if window.label() != panel::LABEL {
                 return;
             }
-            match event {
-                // Close the panel on focus loss, like a top bars menu.
-                WindowEvent::Focused(false) => {
-                    // WebView2 can report focus loss while the new panel is still
-                    // hidden. PageLoadEvent::Finished owns its first presentation.
-                    if cfg!(windows) && !window.is_visible().unwrap_or(false) {
-                        return;
-                    }
-                    panel::close(window.app_handle());
-                }
-                WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
-                    panel::close(window.app_handle());
-                }
-                _ => {}
+            // WebView2 can report focus loss before the first presentation.
+            if cfg!(windows)
+                && matches!(event, WindowEvent::Focused(false))
+                && !window.is_visible().unwrap_or(false)
+            {
+                return;
             }
+            panel::handle_window_event(event, || panel::close(window.app_handle()));
         })
         .invoke_handler(tauri::generate_handler![
             commands::initial_state,
