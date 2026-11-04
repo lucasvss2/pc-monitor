@@ -38,6 +38,8 @@ impl Storage for StartupStorage {
     }
     fn remove(&self, _: &str) -> io::Result<()> {
         match windows_registry::CURRENT_USER
+            .options()
+            .write()
             .open(&self.key_path)
             .and_then(|key| key.remove_value(NAME))
         {

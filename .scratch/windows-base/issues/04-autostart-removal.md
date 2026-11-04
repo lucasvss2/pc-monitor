@@ -22,3 +22,7 @@ O adaptador recebe internamente o caminho da chave para permitir um teste nativo
 - Teste nativo passa e remove a chave de teste mesmo em falha.
 - Repetir ligar/desligar na UI e confirmar estado original desligado.
 - Abertura --autostart silenciosa não cria segunda instância; logon real continua separado do teste de preferência.
+
+## Comments
+
+A [CI de ebd962c](https://github.com/lucasvss2/pc-monitor/actions/runs/41850404754) confirmou a regressão no Windows: a primeira remoção da chave sintética retornou startup setting unavailable; 241 outros testes passaram. O teste não acessou Run. A correção abre somente a chave solicitada com OpenOptions.write e mantém o tratamento idempotente de valor/chave ausente, sem criar chave durante remoção.
