@@ -1,7 +1,7 @@
 //! Local Claude and Codex session polling. Session metadata stays in memory only.
 #[cfg_attr(
     windows,
-    expect(dead_code, reason = "Linux rollout discovery is not used on Windows")
+    allow(dead_code, reason = "Linux rollout discovery is not used on Windows")
 )]
 mod codex;
 #[cfg(target_os = "linux")]
