@@ -75,7 +75,7 @@ fn fixtures_root() -> PathBuf {
 /// only the module data are wrapped, updated at the fixed clock.
 fn load(root: &Path, module: Module, name: &str) -> Result<Snapshot, String> {
     let path = root
-        .join(if module == Module::Tasks {
+        .join(if module == Module::Tasks && name != "full-jira" {
             "trello"
         } else {
             module.id()
@@ -348,6 +348,15 @@ mod tests {
         assert_eq!(system.updated_at, Some(1_793_457_124_000));
         assert!(system.data["cpu"].is_object());
         assert!(fixtures.get(Module::Network).data["speed"].is_object());
+    }
+
+    #[test]
+    fn jira_board_can_be_presented_without_network_or_vault_access() {
+        let fixtures = Fixtures::load(&selection("tasks=full-jira").unwrap()).unwrap();
+        let tasks = fixtures.get(Module::Tasks);
+        assert_eq!(tasks.data["provider"], "jira");
+        assert_eq!(tasks.data["issues"].as_array().unwrap().len(), 3);
+        assert_eq!(tasks.data["columns"].as_array().unwrap().len(), 5);
     }
 
     fn counts(fixtures: &Fixtures) -> Vec<usize> {

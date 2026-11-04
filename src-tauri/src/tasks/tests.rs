@@ -151,6 +151,8 @@ struct JiraHttp {
     write_failure: Arc<Mutex<Option<HttpError>>>,
     required: Arc<Mutex<bool>>,
     cyclic: Arc<Mutex<bool>>,
+    board_cycle: Arc<Mutex<bool>>,
+    transition_response: Arc<Mutex<Option<Value>>>,
     write_gate: Arc<Mutex<Option<WriteGate>>>,
 }
 impl jira::JiraApi for JiraHttp {
@@ -169,7 +171,9 @@ impl jira::JiraApi for JiraHttp {
         } else if path.ends_with("/configuration") {
             fixture("jira", "board-configuration")
         } else if path.ends_with("/transitions") {
-            if *self.required.lock().unwrap() {
+            if let Some(response) = self.transition_response.lock().unwrap().clone() {
+                response
+            } else if *self.required.lock().unwrap() {
                 fixture("jira", "required-transition")
             } else {
                 fixture("jira", "transitions")
@@ -185,7 +189,12 @@ impl jira::JiraApi for JiraHttp {
                 fixture("jira", "board-issues")
             }
         } else {
-            fixture("jira", "boards")
+            let mut boards = fixture("jira", "boards");
+            if *self.board_cycle.lock().unwrap() {
+                boards["isLast"] = json!(false);
+                boards.as_object_mut().unwrap().remove("total");
+            }
+            boards
         })
     }
     fn transition(&self, _: &jira::Auth, item: &str, transition: &str) -> Result<(), HttpError> {
@@ -694,4 +703,47 @@ fn explicit_reconnection_replaces_invalid_vault_data_only_after_validation() {
         .unwrap()
         .contains("PRIVATE_NEW_TOKEN"));
     assert_eq!(tasks.snapshot().data["canWrite"], false);
+}
+
+#[test]
+fn repeated_board_pages_are_rejected_without_an_unbounded_read() {
+    let env = Environment::seeded();
+    *env.jira.board_cycle.lock().unwrap() = true;
+    let tasks = env.jira_tasks();
+    assert_eq!(tasks.snapshot().data["reason"], "unsupportedBoard");
+    assert_eq!(env.jira.requests.lock().unwrap().len(), 2);
+    assert_eq!(tasks.snapshot().data["canWrite"], false);
+}
+
+#[test]
+fn unavailable_transitions_are_hidden_and_unknown_screen_fields_use_the_browser() {
+    let env = Environment::seeded();
+    let mut tasks = env.jira_tasks();
+    // Synthetic variants: missing expanded fields must not imply a supported form.
+    *env.jira.transition_response.lock().unwrap() = Some(json!({"transitions":[
+        {"id":"1","name":"Unavailable","to":{"name":"Done"},"isAvailable":false,"fields":{}},
+        {"id":"2","name":"Additional form","to":{"name":"Done"},"hasScreen":true}
+    ]}));
+    let choices = tasks.transitions(generation(&tasks), "20000").unwrap();
+    assert_eq!(choices.len(), 1);
+    assert_eq!(choices[0].id, "2");
+    assert!(choices[0].requires_fields);
+    assert_eq!(
+        tasks.perform(
+            generation(&tasks),
+            Action::Transition {
+                item: "20000".into(),
+                transition: "2".into()
+            },
+            &mut |_| {}
+        ),
+        Err(Error::RequiredFields)
+    );
+    assert!(!env
+        .jira
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|p| p.starts_with("POST")));
 }

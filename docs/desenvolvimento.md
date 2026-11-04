@@ -113,12 +113,12 @@ npm run dev:fixtures
 KVOJPS_FIXTURES="ai=claude-failure,network=poor" npm run dev:fixtures
 ```
 
-Módulos: `ai`, `agents`, `github`, `trello`, `network`, `system`; nomes das fixtures em `src/lib/<módulo>/fixtures/`. Padrão (B): IA `claude-usage`, Agentes `states`, GitHub/Trello/Rede `full`, Sistema `notebook`.
+Módulos: `ai`, `agents`, `github`, `tasks`, `network`, `system`; o identificador legado `trello` continua aceito na seleção. Nomes das fixtures em `src/lib/<módulo>/fixtures/`; os exemplos Trello permanecem em `src/lib/trello/fixtures/`. Padrão (B): IA `claude-usage`, Agentes `states`, GitHub/Tarefas/Rede `full`, Sistema `notebook`. Para apresentar Jira sem acesso real, use `KVOJPS_FIXTURES="tasks=full-jira" npm run dev:fixtures`; essa leitura vem de `src/lib/tasks/fixtures/full-jira.json`. Em PowerShell, defina `$env:KVOJPS_FIXTURES='tasks=full-jira'` antes de executar e remova a variável com `Remove-Item Env:KVOJPS_FIXTURES` ao terminar.
 
 O que o modo garante:
 
 - Os snapshots seguem o caminho normal (`snapshot:<módulo>` e `initial_state`); a UI não tem caminho paralelo. A injeção é no nível do snapshot, não nas portas brutas, porque as fixtures do B são snapshots da UI. Nenhum coletor inicia: sem leitura do sistema, rede, keyring, `~/.claude/settings.json` ou `~/.codex/hooks.json`, sem notificações e sem verificação de versão.
-- Mover card, testar velocidade, conectar/desconectar Claude, `oauth/usage`, token do GitHub, Trello e hooks respondem em memória. Abrir card, quadro, release ou logs continua abrindo o navegador/arquivos reais.
+- Mover card, testar velocidade, conectar/desconectar Claude, `oauth/usage`, token do GitHub, Trello e hooks respondem em memória. A fixture Jira permite verificar a apresentação; autenticação e transições reais exigem o aceite separado. Nenhuma escrita deste modo alcança o Jira ou o Trello. Atalhos de release, logs e administração do Trello podem abrir navegador/arquivos reais.
 - Relógio da webview fixado em `1793401200000` (30/10/2026 20:00), com as duas janelas de IA abertas como no B.
 - Preferências e autostart em `$TMPDIR/kvojps-monitor-fixtures`; boas-vindas puladas.
 - Feature Cargo `fixtures`, desligada por padrão; `--release` com a feature falha por `compile_error!`; fixtures lidas do repositório em tempo de execução. Testes em `src-tauri/src/fixtures.rs` e `build_tests` em `src-tauri/src/lib.rs`.
@@ -143,6 +143,8 @@ Para imagens do app nativo com dados de exemplo, inicie `npm run dev:fixtures` e
 ## Base Windows experimental
 
 A adaptação Windows tem acompanhamento e limites em [Validação da base Windows](windows-validacao.md). O suporte oficial completo ainda depende das etapas e do aceite da especificação; o incremento não habilita por suposição os coletores Linux. A interface identifica Módulos indisponíveis e descoberta parcial de sessões.
+
+O Módulo Tarefas usa o mesmo coordenador e adaptadores de serviço nos dois sistemas, com cofre nativo por plataforma. O [guia de uso](tarefas.md) e o [roteiro de aceite](tarefas-validacao.md) distinguem testes automatizados de leitura e ação em conta de teste. Não habilite o provedor de produção para validar escrita sem autorização para o item escolhido.
 
 Para compilar nativamente, use MSVC x64 com Windows SDK, Rust estável, Node.js 24 e o WebView2 necessário ao Tauri. Da raiz, em PowerShell:
 

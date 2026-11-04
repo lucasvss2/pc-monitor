@@ -249,6 +249,7 @@ impl<A: JiraApi, R: Clock> Jira<A, R> {
     }
     fn boards(&self, c: &Credential) -> Result<Vec<Value>, Error> {
         let mut result = vec![];
+        let mut seen = HashSet::new();
         let mut start = 0;
         let started = self.clock.monotonic_ms();
         for _ in 0..1000 {
@@ -266,13 +267,16 @@ impl<A: JiraApi, R: Clock> Jira<A, R> {
                 )
                 .map_err(error)?;
             let values = page["values"].as_array().ok_or(Error::UnsupportedBoard)?;
+            let before = seen.len();
             for board in values {
                 let id = board["id"]
                     .as_u64()
                     .ok_or(Error::UnsupportedBoard)?
                     .to_string();
                 let name = board["name"].as_str().ok_or(Error::UnsupportedBoard)?;
-                result.push(json!({"id":id,"name":name}));
+                if seen.insert(id.clone()) {
+                    result.push(json!({"id":id,"name":name}));
+                }
             }
             if page["isLast"] == true
                 || page["total"]
@@ -281,7 +285,7 @@ impl<A: JiraApi, R: Clock> Jira<A, R> {
             {
                 return Ok(result);
             }
-            if values.is_empty() {
+            if seen.len() == before {
                 return Err(Error::UnsupportedBoard);
             }
             start += values.len() as u64;
