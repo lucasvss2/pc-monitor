@@ -24,6 +24,7 @@
   const codexState = $derived.by((): State => {
     if (!data) return { tone: "neutral", text: t.settings.welcome.checking };
     if (data.codex.state === "missing") return { tone: "warn", text: t.ai.missingCodex };
+    if (data.codex.state === "empty") return { tone: "warn", text: t.ai.emptyCodex };
     return { tone: "ok", text: data.codex.plan ? interpolate(t.settings.codexPlan, { plan: data.codex.plan }) : t.settings.codexDetected };
   });
   const statusLineText = $derived(claude?.statusLine === "connected" ? t.ai.settings.connected
@@ -65,7 +66,9 @@
     {#if errors.statusLine}<FieldError id={errorId("statusLine")} message={errors.statusLine} />{/if}
 
     <h5>{t.ai.settings.usage.title}</h5>
-    {#if claude?.usage === "on" || claude?.usage === "expired"}
+    {#if claude?.usage === "unsupported"}
+      <p class="hint">{t.ai.settings.usage.unsupported}</p>
+    {:else if claude?.usage === "on" || claude?.usage === "expired"}
       <p>{claude.usage === "expired" ? t.ai.expired : t.ai.settings.usage.on}</p>
       <button disabled={busy} aria-describedby={describedBy("usage")} onclick={() => run("usage", () => setUsage(false))}>{t.ai.settings.usage.disable}</button>
     {:else if warning}

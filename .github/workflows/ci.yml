@@ -72,6 +72,14 @@ jobs:
         working-directory: src-tauri
         run: cargo clippy --all-targets --locked -- -D warnings
 
+      - name: Native Windows status line shell
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bash = 'C:/Program Files/Git/bin/bash.exe'
+          if (!(Test-Path -LiteralPath $bash)) { throw 'Git Bash unavailable on runner' }
+          "KVOJPS_MONITOR_TEST_GIT_BASH=$bash" >> $env:GITHUB_ENV
+
       - name: cargo test
         working-directory: src-tauri
         run: cargo test --locked
@@ -80,6 +88,19 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: src-tauri
         run: cargo test --locked native_vault_roundtrip_is_local_machine_and_cleanup_is_idempotent -- --ignored
+
+      - name: Native npm Codex stdio (isolated home, no login)
+        if: runner.os == 'Windows'
+        working-directory: src-tauri
+        shell: pwsh
+        run: |
+          $cli = Join-Path $env:RUNNER_TEMP 'monitor-ai-codex'
+          npm install --prefix $cli --ignore-scripts --no-audit --no-fund '@openai/codex@0.154.0'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PATH = (Join-Path $cli 'node_modules/.bin') + ';' + $env:PATH
+          $env:CODEX_HOME = Join-Path $env:RUNNER_TEMP 'monitor-ai-isolated-home'
+          cargo test --locked windows_npm_codex_initializes_over_stdio_without_login -- --ignored
+          exit $LASTEXITCODE
 
       - name: fixture mode clippy (development only)
         working-directory: src-tauri
@@ -92,12 +113,14 @@ jobs:
       - name: Tauri build without bundling
         run: npm run tauri -- build --no-bundle
 
-      - name: Release GUI executable also supports silent hook mode
+      - name: Release GUI executable supports silent hooks and status line
         if: runner.os == 'Windows'
         working-directory: src-tauri
         run: |
           $env:KVOJPS_MONITOR_TEST_BINARY = (Resolve-Path 'target/release/kvojps-monitor.exe').Path
           cargo test --locked --test windows_hook_mode windows_hook_command_preserves_stdin_and_special_paths_without_content_leaks -- --exact
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --test windows_statusline_mode
 
       - name: Windows foundation executable (experimental, unsigned)
         if: runner.os == 'Windows'

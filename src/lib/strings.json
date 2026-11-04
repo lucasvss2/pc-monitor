@@ -337,11 +337,13 @@
         "confirm": "Entendi o risco, ligar",
         "cancel": "Cancelar",
         "on": "Leitura via oauth/usage ligada · a cada 5 min",
-        "disable": "Desligar oauth/usage"
+        "disable": "Desligar oauth/usage",
+        "unsupported": "OAuth de uso indisponível no Windows nesta versão. Use a conexão pela status line."
       },
       "errors": {
         "invalidSettings": "~/.claude/settings.json não é um JSON válido; nada foi alterado",
-        "unwritable": "Não foi possível gravar a configuração do Claude Code"
+        "unwritable": "Não foi possível gravar a configuração do Claude Code",
+        "unsupported": "Recurso indisponível nesta plataforma"
       }
     },
     "codex": "Codex",

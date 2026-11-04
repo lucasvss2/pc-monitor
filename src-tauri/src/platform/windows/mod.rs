@@ -68,10 +68,6 @@ pub fn open_external(args: &[&str]) -> Result<String, ()> {
     }
 }
 
-#[allow(
-    dead_code,
-    reason = "Adapter is retained for the next Windows collector stage"
-)]
 pub struct SystemPrograms;
 impl Programs for SystemPrograms {
     fn installed(&self, name: &str) -> bool {
@@ -86,15 +82,7 @@ impl Programs for SystemPrograms {
 }
 
 /// Polling fallback: the collector owns its cadence and rereads through Files.
-#[allow(
-    dead_code,
-    reason = "Adapter is retained for the next Windows collector stage"
-)]
 pub struct FileWatch;
-#[allow(
-    dead_code,
-    reason = "Adapter is retained for the next Windows collector stage"
-)]
 impl FileWatch {
     pub fn new(_: &Path) -> Self {
         Self

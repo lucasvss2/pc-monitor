@@ -32,6 +32,7 @@ pub enum ClaudeError {
     /// `settings.json` is not a JSON object; nothing was changed.
     InvalidSettings,
     Unwritable,
+    Unsupported,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -46,6 +47,7 @@ pub enum StatusLine {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Usage {
+    Unsupported,
     Off,
     On,
     /// The token expired or was refused: the status line is shown until
@@ -111,11 +113,10 @@ pub fn extract(payload: &str, now: u64) -> Option<String> {
 
 /// `statusline <cache>` mode of the app binary, run by the wrapper.
 pub fn copy_from_stdin(cache: &std::path::Path) {
-    use crate::ports::Clock;
-    let mut payload = String::new();
-    if std::io::Read::read_to_string(&mut std::io::stdin(), &mut payload).is_err() {
+    use crate::ports::{Clock, HookInput};
+    let Ok(payload) = crate::ports::TimedStdin.read(1000, 1_048_576) else {
         return;
-    }
+    };
     let Some(copy) = extract(&payload, crate::ports::SystemClock.now()) else {
         return;
     };
@@ -152,6 +153,9 @@ pub struct Claude<S, P, W, R> {
     operations: super::operation::Operations,
     /// The user opted in to `oauth/usage`; read from the app configuration.
     usage_enabled: bool,
+    usage_supported: bool,
+    #[cfg(windows)]
+    bash: Option<String>,
     usage_unavailable: bool,
     lifecycle_source: Option<Box<dyn crate::lifecycle::CurrentStatus>>,
     /// Newest `oauth/usage` reading.
@@ -185,6 +189,9 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
             api: Box::new(usage::NoUsage),
             operations: super::operation::Operations::default(),
             usage_enabled: false,
+            usage_supported: true,
+            #[cfg(windows)]
+            bash: None,
             usage_unavailable: false,
             lifecycle_source: None,
             usage_reading: None,
@@ -207,7 +214,19 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
         self
     }
 
+    /// Native Windows uses only status line input; do not inspect OAuth storage.
+    #[cfg(windows)]
+    pub fn for_windows(mut self, bash: Option<String>) -> Self {
+        self.usage_supported = false;
+        self.bash = bash;
+        self
+    }
+
     /// The `oauth/usage` endpoint, used only after the user opts in.
+    #[cfg_attr(
+        windows,
+        allow(dead_code, reason = "Optional OAuth remains unsupported on Windows")
+    )]
     pub fn with_usage(mut self, api: impl UsageApi + 'static) -> Self {
         self.api = Box::new(api);
         let choice = self.usage_choice();
@@ -242,9 +261,10 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
             self.plan = claude["plan"].as_str().map(str::to_owned);
             let reading: Option<Reading> = serde_json::from_value(claude["reading"].clone()).ok();
             match reading {
-                Some(reading) if reading.source == Source::OauthUsage => {
+                Some(reading) if reading.source == Source::OauthUsage && self.usage_supported => {
                     self.usage_reading = Some(reading)
                 }
+                Some(reading) if reading.source == Source::OauthUsage => {}
                 // Weekly limits per model come only from `oauth/usage`.
                 Some(mut reading) => {
                     reading.buckets.retain(|bucket| bucket.id == "claude");
@@ -258,6 +278,10 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
     }
 
     fn command(&self) -> String {
+        #[cfg(windows)]
+        if !self.usage_supported {
+            return super::windows::command(&self.locations.wrapper);
+        }
         format!("sh {}", quote(&self.locations.wrapper))
     }
 
@@ -320,6 +344,18 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
     }
 
     fn wrapper(&self, connection: &Connection) -> String {
+        #[cfg(windows)]
+        if !self.usage_supported {
+            return super::windows::wrapper(
+                &self.locations.executable,
+                &self.locations.cache,
+                connection
+                    .original
+                    .as_ref()
+                    .and_then(|line| line["command"].as_str()),
+                self.bash.as_deref(),
+            );
+        }
         let original = match connection
             .original
             .as_ref()
@@ -380,6 +416,9 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
 
     /// Turn the `oauth/usage` opt-in on or off; off goes back to the status line at once.
     pub fn set_usage(&mut self, enabled: bool) -> Result<(), ClaudeError> {
+        if !self.usage_supported {
+            return Err(ClaudeError::Unsupported);
+        }
         let choice = UsageChoice {
             enabled,
             ..self.usage_choice()
@@ -432,6 +471,9 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
     }
 
     fn usage(&self) -> Usage {
+        if !self.usage_supported {
+            return Usage::Unsupported;
+        }
         match (self.usage_enabled, self.rejected) {
             (false, _) => Usage::Off,
             (true, None) => Usage::On,
@@ -597,7 +639,10 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
         struct Oauth {
             subscription_type: Option<String>,
         }
-        let credentials = self.storage.read(&self.locations.credentials).ok();
+        let credentials = self
+            .usage_supported
+            .then(|| self.storage.read(&self.locations.credentials).ok())
+            .flatten();
         let oauth = credentials
             .as_deref()
             .and_then(|text| serde_json::from_str::<Credentials>(text).ok())
@@ -613,7 +658,8 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
             self.rejected = None;
             self.usage_pending = true;
         }
-        self.detected = Some(self.programs.installed("claude") && oauth.is_some());
+        self.detected =
+            Some(self.programs.installed("claude") && (!self.usage_supported || oauth.is_some()));
         if let Some(plan) = oauth.and_then(|oauth| oauth.subscription_type) {
             self.plan = Some(plan);
         }

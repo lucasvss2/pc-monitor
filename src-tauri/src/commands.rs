@@ -40,7 +40,7 @@ pub fn initial_state(
         runtime_id: snapshots.runtime_id().into(),
         preferences_error: state.preferences_error(),
         unavailable_modules: if cfg!(windows) {
-            vec![Module::Ai, Module::Network, Module::System]
+            vec![Module::Network, Module::System]
         } else {
             vec![]
         },

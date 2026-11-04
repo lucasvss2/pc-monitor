@@ -254,7 +254,7 @@ export interface AiData {
     /** replaced: another tool changed statusLine after connecting. */
     statusLine: "off" | "connected" | "replaced";
     /** oauth/usage opt-in; expired: token expired or refused, back to the status line. */
-    usage: "off" | "on" | "expired";
+    usage: "off" | "on" | "expired" | "unsupported";
     /** Opted in, but the local access token could not be read. */
     usageUnavailable?: boolean;
     /** First of at least three consecutive failed oauth/usage reads. */

@@ -5,12 +5,27 @@ mod claude;
 mod operation;
 mod process;
 mod usage;
+#[cfg(windows)]
+mod windows;
 use crate::module::Module;
 use crate::persistence::Storage;
 use crate::persistence::{Event, LogRecord, Persistence, Volatile};
 use crate::ports::{Clock, Files, Programs, Watch};
 use crate::snapshot::Snapshot;
 pub use claude::{copy_from_stdin, ClaudeError};
+#[cfg(all(windows, debug_assertions))]
+pub fn validation_status_line(
+    executable: &str,
+    cache: &str,
+    wrapper: &str,
+    original: &str,
+    bash: Option<&str>,
+) -> (String, String) {
+    (
+        windows::command(wrapper),
+        windows::wrapper(executable, cache, Some(original), bash),
+    )
+}
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -704,9 +719,15 @@ pub fn start(app: tauri::AppHandle) {
     app.manage(Collector(tx));
     std::thread::spawn(move || {
         let home = dirs::home_dir().unwrap_or_default();
+        let codex_home = std::env::var_os("CODEX_HOME")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| home.join(".codex"));
+        let claude_home = std::env::var_os("CLAUDE_CONFIG_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| home.join(".claude"));
         let mut codex = Codex::new(
             process::CodexCli,
-            crate::ports::RootFilesystem::at(home.join(".codex")),
+            crate::ports::RootFilesystem::at(codex_home),
             crate::ports::SystemClock,
         );
         let path = |dir: Option<std::path::PathBuf>, rest: &str| {
@@ -716,34 +737,50 @@ pub fn start(app: tauri::AppHandle) {
                 .into_owned()
         };
         let locations = claude::Locations {
-            settings: path(Some(home.join(".claude")), "settings.json"),
-            credentials: path(Some(home.join(".claude")), ".credentials.json"),
+            settings: path(Some(claude_home.clone()), "settings.json"),
+            credentials: path(Some(claude_home), ".credentials.json"),
             config: path(dirs::config_dir(), "kvojps-monitor/claude-statusline.json"),
+            #[cfg(target_os = "linux")]
             wrapper: path(
                 Some(home.clone()),
                 ".local/share/kvojps-monitor/claude-statusline",
             ),
+            #[cfg(windows)]
+            wrapper: path(
+                dirs::data_local_dir(),
+                "kvojps-monitor/claude-statusline.ps1",
+            ),
             cache: path(dirs::cache_dir(), "kvojps-monitor/claude-statusline.json"),
             // An AppImage runs from a temporary mount: point at the AppImage file.
-            executable: std::env::var_os("APPIMAGE")
-                .map(std::path::PathBuf::from)
-                .or_else(|| std::env::current_exe().ok())
-                .unwrap_or_default()
-                .to_string_lossy()
-                .into_owned(),
+            executable: {
+                #[cfg(target_os = "linux")]
+                let image = std::env::var_os("APPIMAGE").map(std::path::PathBuf::from);
+                #[cfg(windows)]
+                let image: Option<std::path::PathBuf> = None;
+                image
+                    .or_else(|| std::env::current_exe().ok())
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned()
+            },
             usage_choice: path(dirs::config_dir(), "kvojps-monitor/claude-usage.json"),
         };
         let watch = crate::ports::FileWatch::new(std::path::Path::new(&locations.cache));
-        let mut claude = claude::Claude::new(
+        let claude = claude::Claude::new(
             crate::persistence::DiskStorage("/".into()),
             crate::ports::SystemPrograms,
             watch,
             crate::ports::SystemClock,
             locations,
-        )
-        .with_usage(usage::AnthropicUsage)
-        .with_lifecycle(app.state::<crate::lifecycle::Shared>().inner().clone());
-        if let (Some(cache), Some(state)) = (dirs::cache_dir(), dirs::state_dir()) {
+        );
+        #[cfg(target_os = "linux")]
+        let claude = claude.with_usage(usage::AnthropicUsage);
+        #[cfg(windows)]
+        let claude = claude.for_windows(windows::git_bash());
+        let mut claude =
+            claude.with_lifecycle(app.state::<crate::lifecycle::Shared>().inner().clone());
+        let state = dirs::state_dir().or_else(dirs::data_local_dir);
+        if let (Some(cache), Some(state)) = (dirs::cache_dir(), state) {
             use crate::persistence::{Cache, DiskStorage, LocalPersistence, Logs};
             let shared = SharedCache::new(LocalPersistence {
                 cache: Cache(DiskStorage(cache.join("kvojps-monitor"))),

@@ -103,6 +103,56 @@ fn payload() -> String {
 
 const WRAPPER_COMMAND: &str = "sh '.local/share/kvojps-monitor/claude-statusline'";
 
+#[cfg(windows)]
+#[test]
+fn windows_detects_cli_and_status_line_without_reading_credentials_or_opt_in() {
+    struct NoCredentials(DiskStorage);
+    impl Storage for NoCredentials {
+        fn read(&self, path: &str) -> std::io::Result<String> {
+            assert!(
+                !path.ends_with(".credentials.json"),
+                "Windows must not read OAuth credentials"
+            );
+            assert!(
+                !path.ends_with("claude-usage.json"),
+                "Windows must not restore an unsupported opt-in"
+            );
+            self.0.read(path)
+        }
+        fn write(&self, path: &str, text: &str) -> std::io::Result<()> {
+            self.0.write(path, text)
+        }
+        fn rename(&self, from: &str, to: &str) -> std::io::Result<()> {
+            self.0.rename(from, to)
+        }
+        fn remove(&self, path: &str) -> std::io::Result<()> {
+            self.0.remove(path)
+        }
+    }
+    let home = Home::new();
+    let before = home.read(".claude/settings.json");
+    let mut claude = Claude::new(
+        NoCredentials(DiskStorage(home.dir.path().into())),
+        home.installed.clone(),
+        home.changes.clone(),
+        home.clock.clone(),
+        home.locations(),
+    )
+    .for_windows(None);
+    claude.step(false);
+    assert_eq!(claude.data()["state"], "empty");
+    assert_eq!(claude.data()["usage"], "unsupported");
+    assert_eq!(claude.set_usage(true), Err(ClaudeError::Unsupported));
+    assert_eq!(home.read(".claude/settings.json"), before);
+    claude.connect().unwrap();
+    home.status_line_runs(&payload());
+    claude.step(false);
+    assert_eq!(claude.data()["state"], "ready");
+    assert_eq!(claude.data()["reading"]["source"], "statusLine");
+    claude.disconnect().unwrap();
+    assert_eq!(home.read(".claude/settings.json"), before);
+}
+
 #[test]
 fn settings_never_change_without_the_click() {
     let home = Home::new();

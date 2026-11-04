@@ -16,7 +16,6 @@ pub fn start(app: &AppHandle) {
     crate::lifecycle::start(app);
     crate::github::start(app.clone());
     crate::tasks::start(app.clone());
-    #[cfg(target_os = "linux")]
     crate::ai::start(app.clone());
     crate::agents::start(app.clone());
 }

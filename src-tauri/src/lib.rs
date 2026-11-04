@@ -4,14 +4,6 @@
 #[cfg(any(windows, test))]
 mod activation;
 mod agents;
-// This foundation keeps shared rules available to tests; its native collector is not active yet.
-#[cfg_attr(
-    windows,
-    allow(
-        dead_code,
-        reason = "Windows collector is a later implementation stage"
-    )
-)]
 mod ai;
 #[cfg_attr(windows, path = "platform/windows/autostart.rs")]
 mod autostart;
@@ -247,6 +239,18 @@ pub fn validation_hook_command(executable: &str) -> String {
 #[cfg(debug_assertions)]
 pub fn validation_hook_endpoint() -> Option<std::path::PathBuf> {
     agents::hooks::socket_path()
+}
+
+/// Development-only generator; tests run the actual wrapper against isolated files.
+#[cfg(all(windows, debug_assertions))]
+pub fn validation_status_line(
+    executable: &str,
+    cache: &str,
+    wrapper: &str,
+    original: &str,
+    bash: Option<&str>,
+) -> (String, String) {
+    ai::validation_status_line(executable, cache, wrapper, original, bash)
 }
 
 #[cfg(test)]

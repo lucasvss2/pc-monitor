@@ -13,6 +13,19 @@ import missing from "./fixtures/missing.json";
 const block = (name: "Claude" | "Codex") => screen.getByRole("region", { name });
 const props = (data: unknown) => ({ data: data as AiData, connect: vi.fn(), disconnect: vi.fn(), setUsage: vi.fn() });
 
+it("explains unsupported Windows OAuth without offering an opt-in", () => {
+  render(AiSettings, props({ ...off, claude: { ...off.claude, usage: "unsupported" } }));
+  expect(screen.getByText("OAuth de uso indisponível no Windows nesta versão. Use a conexão pela status line.")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Ler via oauth/usage…" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Conectar ao Claude Code" })).toBeInTheDocument();
+});
+
+it("does not confirm Codex limits before the first reading", () => {
+  render(AiSettings, props({ ...off, codex: { ...off.codex, state: "empty", reading: null } }));
+  expect(within(block("Codex")).getByText("Sem leitura dos limites do Codex ainda · use o Codex ou atualize com ↻")).toBeInTheDocument();
+  expect(within(block("Codex")).queryByText("Codex detectado · plano plus")).not.toBeInTheDocument();
+});
+
 
 it("splits the section into a Claude and a Codex block, each with its own state", () => {
   render(AiSettings, props(connected));

@@ -18,7 +18,9 @@ impl UsageApi for NoUsage {
     }
 }
 
+#[cfg(target_os = "linux")]
 pub struct AnthropicUsage;
+#[cfg(target_os = "linux")]
 impl UsageApi for AnthropicUsage {
     fn usage(&self, token: &str) -> Result<Value, HttpError> {
         let response = reqwest::blocking::Client::builder()
