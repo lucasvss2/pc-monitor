@@ -1,2 +1,6 @@
+# Keep checkout from changing snapshot/source line endings between operating systems.
+* text=auto eol=lf
+# Recorded core fixtures retain their exact bytes, including intentional CRLF.
+src-tauri/fixtures/** -text
 # Preserve whitespace in the verbatim /proc capture used by the ownership fixtures.
 src-tauri/fixtures/network/tcp/status.txt -whitespace

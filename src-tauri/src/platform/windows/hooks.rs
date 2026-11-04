@@ -64,6 +64,12 @@ pub struct NativeHookSocket {
     server: bool,
 }
 impl NativeHookSocket {
+    fn reset(&mut self) {
+        unsafe {
+            let _ = DisconnectNamedPipe(self.handle.0);
+            let _ = ConnectNamedPipe(self.handle.0, None);
+        }
+    }
     pub fn sender(path: &Path) -> io::Result<Self> {
         let path: Vec<_> = path.as_os_str().encode_wide().chain([0]).collect();
         let handle = unsafe {
@@ -162,23 +168,34 @@ impl HookSocket for NativeHookSocket {
         unsafe {
             let _ = ConnectNamedPipe(self.handle.0, None);
         }
+        // An empty live client may still be reading stdin. Do not disconnect it
+        // just because no packet is ready yet; Peek distinguishes it from EOF.
+        let mut available = 0;
+        if let Err(error) =
+            unsafe { PeekNamedPipe(self.handle.0, None, 0, None, Some(&mut available), None) }
+        {
+            if error.code() != ERROR_PIPE_LISTENING.to_hresult() {
+                self.reset();
+            }
+            return None;
+        }
+        if available == 0 {
+            return None;
+        }
+        if available > 65536 {
+            self.reset();
+            return None;
+        }
         let mut bytes = vec![0u8; 65536];
         let mut count = 0;
         let result = unsafe { ReadFile(self.handle.0, Some(&mut bytes), Some(&mut count), None) };
+        // One packet per subprocess. Re-arm immediately for the next client,
+        // including clients arriving before the next collector tick.
+        self.reset();
         match result {
             Ok(()) if count > 0 => {
                 bytes.truncate(count as usize);
                 Some(bytes)
-            }
-            Err(error)
-                if error.code() == ERROR_NO_DATA.to_hresult()
-                    || error.code() == ERROR_BROKEN_PIPE.to_hresult()
-                    || error.code() == ERROR_MORE_DATA.to_hresult() =>
-            {
-                unsafe {
-                    let _ = DisconnectNamedPipe(self.handle.0);
-                }
-                None
             }
             _ => None,
         }
@@ -220,6 +237,7 @@ mod tests {
         let mut server = NativeHookSocket::bind(&path).unwrap();
         assert!(NativeHookSocket::bind(&path).is_err());
         let mut client = NativeHookSocket::sender(&path).unwrap();
+        assert!(server.receive().is_none());
         client.send(b"synthetic-metadata").unwrap();
         assert!(server.receive().unwrap() == b"synthetic-metadata");
         drop(client);
