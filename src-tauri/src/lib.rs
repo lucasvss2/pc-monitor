@@ -1,6 +1,8 @@
 // Fixture mode bypasses every collector; the default build still lints them.
 #![cfg_attr(feature = "fixtures", allow(dead_code))]
 
+#[cfg(any(windows, test))]
+mod activation;
 mod agents;
 // This foundation keeps shared rules available to tests; its native collector is not active yet.
 #[cfg_attr(
@@ -77,6 +79,10 @@ pub fn copy_status_line(cache: &str) {
 }
 
 pub fn run() {
+    #[cfg(windows)]
+    if activation::request(&std::env::args().collect::<Vec<_>>()).is_err() {
+        return;
+    }
     tauri::Builder::default()
         // Register first: a second launch opens the live instance panel and exits.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
@@ -115,6 +121,10 @@ pub fn run() {
             start_sources(app.handle());
 
             indicator::start(app.handle());
+            #[cfg(windows)]
+            if activation::request(&std::env::args().collect::<Vec<_>>()) == Ok(true) {
+                panel::open_agent(app.handle(), String::new());
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -184,6 +194,12 @@ pub fn run() {
 
 #[cfg(not(feature = "fixtures"))]
 fn second_launch(app: &tauri::AppHandle, args: &[String]) {
+    #[cfg(windows)]
+    match activation::request(args) {
+        Ok(true) => return panel::open_agent(app, String::new()),
+        Err(()) => return,
+        Ok(false) => {}
+    }
     if args.iter().any(|arg| arg == "--autostart") {
         return;
     }

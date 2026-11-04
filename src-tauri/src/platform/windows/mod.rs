@@ -2,6 +2,7 @@
 mod credentials;
 mod hooks;
 mod notifications;
+mod protocol;
 mod session;
 mod startup;
 pub use credentials::NativeKeyring;

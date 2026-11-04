@@ -1,4 +1,5 @@
-//! WinRT toasts with a COM activator for banner and Action Center activation.
+//! WinRT toasts with fixed protocol activation for banner and Action Center clicks.
+//! The COM registration remains for identity and compatibility with older toasts.
 //! Persisted launch arguments contain only the destination module, never session data.
 use crate::agents::notifications::Sink;
 use windows::{
@@ -78,6 +79,7 @@ fn register(activate: Activation) -> Result<Registration> {
         let server = user.create(format!(r"Software\Classes\CLSID\{CLSID}\LocalServer32"))?;
         let executable = std::env::current_exe().map_err(|_| Error::from(E_FAIL))?;
         server.set_string("", format!("\"{}\" --toast-activate", executable.display()))?;
+        super::protocol::register(&executable)?;
         let factory: IClassFactory = Factory(activate).into();
         unsafe {
             CoRegisterClassObject(
@@ -130,7 +132,8 @@ fn escape(text: &str) -> String {
 }
 fn payload(title: &str, body: &str) -> String {
     format!(
-        r#"<toast launch="agents"><visual><binding template="ToastGeneric"><text>{}</text><text>{}</text></binding></visual></toast>"#,
+        r#"<toast activationType="protocol" launch="{}"><visual><binding template="ToastGeneric"><text>{}</text><text>{}</text></binding></visual></toast>"#,
+        crate::activation::URI,
         escape(title),
         escape(body)
     )
@@ -214,7 +217,8 @@ mod tests {
     #[test]
     fn toast_payload_has_only_module_activation_and_escapes_xml() {
         let xml = payload("Codex", "Aguardando <ação> & aprovação");
-        assert!(xml.contains(r#"launch="agents""#));
+        assert!(xml.contains(r#"activationType="protocol""#));
+        assert!(xml.contains(&format!(r#"launch="{}""#, crate::activation::URI)));
         assert!(xml.contains("&lt;ação&gt; &amp; aprovação"));
         assert!(!xml.contains("session"));
     }
