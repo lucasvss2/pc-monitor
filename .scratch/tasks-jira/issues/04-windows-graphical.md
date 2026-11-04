@@ -1,6 +1,6 @@
 # Validação gráfica de Tarefas no Windows 11
 
-Status: claimed
+Status: resolved
 Assignee: Codex / usuário
 Parent: ../spec.md
 
@@ -31,3 +31,7 @@ Aceite assistido confirmado pelo usuário na versão corrigida: Configurações 
 O usuário confirmou a troca para Trello, que apresentou formulário de chave/token, e o retorno ao Jira com o mesmo quadro sem pedir credenciais. Isso valida o retorno à conexão Jira; não valida autenticação/leitura com uma conta Trello configurada neste Windows. X e Escape também foram confirmados na janela principal: ambos fecharam o Painel, reaberto pelo Indicador com Jira normal. Com Jira ativo, a leitura somente de metadados verificou schema 1, provider jira, nenhuma intenção de limpeza pendente, somente chaves de metadados no arquivo de seleção e ausência de tasks.json/trello.json no cache. Credenciais e conteúdo de itens não foram inspecionados por ferramentas.
 
 EXE local antigo e artefato remoto da versão 5269be6 removidos depois da validação da versão corrigida; versão atual permanece em uso. Novo pedido de reposicionar a janela registrado no ticket 05. Reinício completo, leitura/transição com conta Trello, alterações em itens de teste e aceite Ubuntu continuam fora das confirmações obtidas nesta rodada.
+
+## Resultado
+
+Recorte solicitado de conexão Jira, leitura e troca Jira → Trello → Jira concluído por confirmação assistida, na versão 5b4034d. A fonte Trello foi verificada no estado sem conexão; não se declara leitura real dos dois serviços nem aceite integral da especificação. Permanência ao perder foco e fechamento por X/Escape foram confirmados. O pedido adicional de arraste prossegue no ticket 05, reutilizando a conexão salva e preservando as limitações acima.

@@ -1,6 +1,6 @@
 # Validação da base Windows
 
-Este incremento inicia a [primeira etapa da especificação](../.scratch/jira-windows/spec.md). Ainda não é suporte oficial Windows completo. Limites de IA, Rede e Sistema permanecem explicitamente indisponíveis; descoberta completa de CLIs e status line Windows continuam na adaptação. Jira e Painel reduzido seguem no plano aprovado.
+Este guia acompanha a base da [especificação](../.scratch/jira-windows/spec.md). Ainda não é suporte oficial Windows completo. Limites de IA, Rede e Sistema permanecem explicitamente indisponíveis; descoberta completa de CLIs e status line Windows continuam na adaptação. Tarefas/Jira foi implementado, com conexão/leitura/troca confirmadas em um recorte assistido descrito em [Validação de Tarefas](tarefas-validacao.md); esse resultado não encerra os demais critérios. Painel reduzido e geometrias continuam no plano aprovado.
 
 ## Verificações automáticas
 
