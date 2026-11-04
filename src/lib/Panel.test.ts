@@ -860,3 +860,16 @@ it("does not offer credential writes for an unavailable Windows module", async (
   expect(document.querySelector(".pane.ai")).toHaveTextContent("Indisponível no Windows nesta versão de validação.");
   expect(connectClaude).not.toHaveBeenCalled();
 });
+
+it("opens a module-only notification at Agents even when first-use welcome is pending", async () => {
+  const { core } = fakeCore({ lastAnchor: "github", agentTarget: "" });
+  const completeWelcome = vi.fn();
+  const prepared = vi.fn();
+  const initialState = vi.fn(async () => ({ lastAnchor: "github" as const, agentTarget: "", welcome: true, panelVisible: true, snapshots: [] }));
+  render(Panel, { core: { ...core, initialState, completeWelcome }, prepared });
+  await vi.waitFor(() => expect(prepared).toHaveBeenCalled());
+  expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toContain(section("Agentes"));
+  expect(settingsButton()).not.toHaveAttribute("aria-current", "page");
+  expect(completeWelcome).not.toHaveBeenCalled();
+  expect(core.chooseAnchor).not.toHaveBeenCalled();
+});

@@ -76,6 +76,7 @@ export interface InitialState {
   appearance?: Appearance;
   /** Desktop color scheme from the core; null when unknown. */
   systemTheme?: SystemTheme | null;
+  /** Empty string targets Agents without identifying a particular session. */
   agentTarget?: string | null;
   /** Last module chosen in the navigation, or Agents for a notification target. */
   lastAnchor: Module;

@@ -198,9 +198,9 @@
       anchor ??= initial.lastAnchor;
       await tick();
       if (disposed) return;
-      if (area === "panel") reveal(agentTarget ? "agents" : anchor, false);
+      if (area === "panel") reveal(agentTarget !== null ? "agents" : anchor, false);
       syncVisibility();
-      if (initial.welcome && !agentTarget) {
+      if (initial.welcome && agentTarget === null) {
         welcome = true;
         core.completeWelcome?.();
         await openSettings();

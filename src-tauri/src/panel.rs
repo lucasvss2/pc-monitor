@@ -191,7 +191,8 @@ pub fn close(app: &AppHandle) {
     }
 }
 
-/// Notification clicks override the remembered module, also in an already open panel.
+/// Notification clicks present Agents without changing the saved anchor.
+/// An empty session targets the module without a particular session identity.
 pub fn open_agent(app: &AppHandle, session: String) {
     use tauri::Emitter;
     app.state::<Mutex<AppState>>()
