@@ -18,7 +18,25 @@ O núcleo é exercitado nas portas de HTTP, cofre, arquivos e relógio, usando o
 | Privacidade | Credencial recusada sem cofre, reconexão validada antes de substituir dados inválidos, token apagado do campo, Jira sem projeção em disco e reinício offline sem itens. |
 | Tempo e falhas | Cadência/backoff e Retry-After monotônicos, relógio civil retrocedendo, ações bloqueadas sem leitura válida. |
 
-Resultados finais da CI Ubuntu/Windows serão registrados após a conclusão das verificações desta revisão. Não se conta falha de inicialização de workers locais como falha funcional: neste Windows, os testes Vitest locais usam `--pool=threads --maxWorkers=1`; o build Rust é validado na CI, preservando a política de Controle de Aplicativo do host.
+Revisão de código: `5269be6`, aprovada integralmente na [CI 41895134794](https://github.com/lucasvss2/pc-monitor/actions/runs/41895134794) nos dois sistemas em 04/11/2026. O runner `windows-2025` não substitui o aceite gráfico no Windows 11.
+
+| Verificação | Resultado |
+| --- | --- |
+| UI no runner Windows | 391 testes passaram em 17 arquivos. |
+| Rust no runner Windows | 268 testes unitários e um teste de integração passaram. O teste de cofre inicialmente ignorado foi executado separadamente: passou e removeu a entrada sintética. |
+| Fixtures nativas Windows | 13 testes passaram, incluindo a apresentação Jira sem rede/cofre. |
+| Produção Windows | Build sem bundle e teste do modo silencioso de hooks no executável GUI passaram. Artefato experimental sem assinatura mantido na execução final, sem instalação no host. |
+| Ubuntu 24.04 | 333 testes unitários, três de integração e 16 de fixtures passaram; build de produção sem bundle passou. |
+| Ambos os runners | Formatação, Svelte, suíte da UI, build da UI e Clippy com warnings negados, com e sem fixtures, passaram. |
+| Host de desenvolvimento | Suíte completa anterior à última regressão: 390 testes; a regressão offline e os outros seis testes de Tarefas passaram depois. Svelte sem erros/avisos e build UI passaram após a correção. |
+
+Não se conta falha de inicialização de workers locais como falha funcional: neste Windows, os testes Vitest locais usam `--pool=threads --maxWorkers=1`; o build Rust é validado na CI, preservando a política de Controle de Aplicativo do host. A [CI 41893790528](https://github.com/lucasvss2/pc-monitor/actions/runs/41893790528) também passou integralmente nos dois runners na revisão `5e537c6`; ela antecede as últimas regressões de paginação/transições e reinício offline, cobertas pela execução final.
+
+## Sanitização e limpeza
+
+Revisados os caminhos alterados em `.scratch/tasks-jira/`, `README.md`, `docs/`, `src-tauri/src/`, `src-tauri/fixtures/jira/` e `src/lib/`: diff completo e índice, strings, JSON e metadados de commits. Não há imagens novas. As oito fixtures JSON Jira foram verificadas estruturalmente: somente hostname de exemplo, nenhum campo de e-mail e identificador de conta sintético. Campos e relações sanitizados, variantes sintéticas e limitações de captura estão nos READMEs das fixtures; nenhuma resposta bruta nem mapa de substituição foi publicado. Autor/committer usam noreply.
+
+O formatador temporário, suas DLLs e os logs locais de teste foram removidos do diretório exclusivo desta tarefa. Não foram instaladas novas versões do aplicativo no host, nem alterados seus hooks ou credenciais. O artefato Windows antigo da revisão `5e537c6` foi removido após a conclusão do artefato final; uma execução intermediária obsoleta foi cancelada e não deixou artefatos. O estado final do Git contém somente os arquivos intencionais versionados.
 
 ## Aceite com conta de teste — pendente nos dois sistemas
 

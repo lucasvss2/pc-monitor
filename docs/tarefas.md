@@ -10,6 +10,8 @@ Para Jira, a integração inicial atende **Jira Cloud**, no endereço raiz HTTPS
 
 O aplicativo valida a conta e lista seus quadros acessíveis. Selecione o quadro desejado. A leitura segue o conteúdo e as colunas que o serviço define para esse quadro, incluindo todas as páginas; não usa uma consulta genérica do projeto. Restrições de permissão e configuração do Jira continuam valendo. O acesso concedido a conectores de outros aplicativos não conecta o monitor.
 
+Este fluxo inicial usa um **token pessoal sem escopos**, pela opção **Create API token**. Tokens com escopos usam o gateway `api.atlassian.com/ex/jira/{cloudId}` e não são atendidos pelo acesso direto ao site implementado aqui. A distinção e os dois caminhos de criação estão no [guia de tokens da Atlassian](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/).
+
 Site, conta, credencial e seleção ficam no cofre nativo: GNOME Keyring no Ubuntu ou Windows Credential Manager no Windows. Sem cofre disponível, a conexão não é salva; não existe armazenamento alternativo em arquivo. Expiração ou revogação do token exige **Atualizar conexão**.
 
 ## Consultar e alterar
