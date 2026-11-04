@@ -849,3 +849,14 @@ it("explains unavailable native modules instead of rendering metric values or ac
   expect(within(section("Sistema")).queryByText(/CPU/)).not.toBeInTheDocument();
   expect(within(section("Rede")).queryByRole("button")).not.toBeInTheDocument();
 });
+
+it("does not offer credential writes for an unavailable Windows module", async () => {
+  const { core } = fakeCore({ unavailableModules: ["ai"] });
+  const connectClaude = vi.fn();
+  render(Panel, { core: { ...core, connectClaude } });
+  await screen.findByRole("region", { name: "IA" });
+  await userEvent.click(settingsButton());
+  await userEvent.click(screen.getByRole("button", { name: /^IA$/ }));
+  expect(document.querySelector(".pane.ai")).toHaveTextContent("Indisponível no Windows nesta versão de validação.");
+  expect(connectClaude).not.toHaveBeenCalled();
+});

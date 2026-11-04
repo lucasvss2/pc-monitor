@@ -177,6 +177,41 @@ impl Sink for Desktop {
 mod tests {
     use super::*;
     #[test]
+    fn native_com_class_dispatches_activation_without_session_payloads() {
+        use std::sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        };
+        let count = Arc::new(AtomicUsize::new(0));
+        let calls = count.clone();
+        let factory: IClassFactory = Factory(Arc::new(move || {
+            calls.fetch_add(1, Ordering::SeqCst);
+        }))
+        .into();
+        let class = GUID::from_u128(0xc4bca553_30d8_46b2_a7a2_65ea59c7e9f7);
+        unsafe {
+            CoInitializeEx(None, COINIT_MULTITHREADED).ok().unwrap();
+        }
+        struct Cleanup(u32);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                unsafe {
+                    let _ = CoRevokeClassObject(self.0);
+                    CoUninitialize();
+                }
+            }
+        }
+        let cookie = unsafe {
+            CoRegisterClassObject(&class, &factory, CLSCTX_LOCAL_SERVER, REGCLS_MULTIPLEUSE)
+        }
+        .unwrap();
+        let _cleanup = Cleanup(cookie);
+        let callback: INotificationActivationCallback =
+            unsafe { CoCreateInstance(&class, None, CLSCTX_LOCAL_SERVER) }.unwrap();
+        unsafe { callback.Activate(w!("dev.kvojps.monitor"), w!("agents"), &[]) }.unwrap();
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+    }
+    #[test]
     fn toast_payload_has_only_module_activation_and_escapes_xml() {
         let xml = payload("Codex", "Aguardando <ação> & aprovação");
         assert!(xml.contains(r#"launch="agents""#));

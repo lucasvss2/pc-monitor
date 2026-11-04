@@ -15,6 +15,10 @@ use crate::ports::*;
 use std::{io, path::Path};
 use windows::core::PCWSTR;
 
+#[allow(
+    dead_code,
+    reason = "Adapter is retained for the next Windows collector stage"
+)]
 pub fn space(path: &Path) -> io::Result<Space> {
     use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
@@ -63,6 +67,10 @@ pub fn open_external(args: &[&str]) -> Result<String, ()> {
     }
 }
 
+#[allow(
+    dead_code,
+    reason = "Adapter is retained for the next Windows collector stage"
+)]
 pub struct SystemPrograms;
 impl Programs for SystemPrograms {
     fn installed(&self, name: &str) -> bool {
@@ -77,7 +85,15 @@ impl Programs for SystemPrograms {
 }
 
 /// Polling fallback: the collector owns its cadence and rereads through Files.
+#[allow(
+    dead_code,
+    reason = "Adapter is retained for the next Windows collector stage"
+)]
 pub struct FileWatch;
+#[allow(
+    dead_code,
+    reason = "Adapter is retained for the next Windows collector stage"
+)]
 impl FileWatch {
     pub fn new(_: &Path) -> Self {
         Self
@@ -91,8 +107,24 @@ impl Watch for FileWatch {
 
 pub struct PortalSettings;
 impl DesktopSettings for PortalSettings {
-    fn follow(&self, _: &mut dyn FnMut(crate::desktop_theme::SystemTheme)) -> Result<(), ()> {
-        Err(())
+    fn follow(&self, publish: &mut dyn FnMut(crate::desktop_theme::SystemTheme)) -> Result<(), ()> {
+        use crate::desktop_theme::SystemTheme;
+        let key = windows_registry::CURRENT_USER
+            .open(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+            .map_err(|_| ())?;
+        let mut previous = None;
+        loop {
+            let theme = if key.get_u32("AppsUseLightTheme").map_err(|_| ())? == 0 {
+                SystemTheme::Dark
+            } else {
+                SystemTheme::Light
+            };
+            if previous != Some(theme) {
+                publish(theme);
+                previous = Some(theme);
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
     }
 }
 

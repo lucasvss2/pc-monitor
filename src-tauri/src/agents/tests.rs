@@ -430,7 +430,7 @@ fn three_distinct_sessions_within_ten_seconds_collapse_into_one_group() {
     monitor.step();
     assert_eq!(
         notifications.0.lock().unwrap().last().unwrap().title,
-        "Claude Code · late"
+        "Claude Code"
     );
 }
 

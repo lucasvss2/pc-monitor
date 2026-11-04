@@ -25,13 +25,16 @@ fn failure() -> io::Error {
     io::Error::other("local hook transport unavailable")
 }
 
-fn user_sid() -> io::Result<String> {
+fn process_sid(process: HANDLE) -> io::Result<String> {
     unsafe {
         let mut token = HANDLE::default();
-        OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).map_err(|_| failure())?;
+        OpenProcessToken(process, TOKEN_QUERY, &mut token).map_err(|_| failure())?;
         let token = Handle(token);
         let mut length = 0;
         let _ = GetTokenInformation(token.0, TokenUser, None, 0, &mut length);
+        if (length as usize) < std::mem::size_of::<TOKEN_USER>() {
+            return Err(failure());
+        }
         let mut storage = vec![0usize; (length as usize).div_ceil(std::mem::size_of::<usize>())];
         GetTokenInformation(
             token.0,
@@ -48,6 +51,9 @@ fn user_sid() -> io::Result<String> {
         let _ = LocalFree(Some(HLOCAL(text.0.cast())));
         sid
     }
+}
+fn user_sid() -> io::Result<String> {
+    process_sid(unsafe { GetCurrentProcess() })
 }
 pub fn endpoint() -> Option<std::path::PathBuf> {
     Some(format!(r"\\.\pipe\kvojps-monitor-{}", user_sid().ok()?).into())
@@ -74,6 +80,17 @@ impl NativeHookSocket {
         .map_err(|_| failure())?;
         // A busy or absent monitor fails immediately; never wait for a server.
         let handle = Handle(handle);
+        // A pipe name containing our SID is not authentication: another user
+        // could reserve it while the monitor is absent. Verify the real peer.
+        let mut server_pid = 0;
+        unsafe { GetNamedPipeServerProcessId(handle.0, &mut server_pid) }.map_err(|_| failure())?;
+        let process = Handle(
+            unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, server_pid) }
+                .map_err(|_| failure())?,
+        );
+        if process_sid(process.0)? != user_sid()? {
+            return Err(failure());
+        }
         unsafe { SetNamedPipeHandleState(handle.0, Some(&PIPE_NOWAIT), None, None) }
             .map_err(|_| failure())?;
         Ok(Self {

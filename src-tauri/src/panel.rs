@@ -159,6 +159,7 @@ fn learn_margin(window: &WebviewWindow) {
 
 /// Margin between the logical size asked for and the visible area obtained. None for
 /// allocations that are not the real one yet (tiny, or larger than asked for).
+#[cfg(any(test, target_os = "linux"))]
 fn margin(asked: (f64, f64), visible: (f64, f64)) -> Option<(f64, f64)> {
     const MAX: f64 = 200.0;
     let taken = (asked.0 - visible.0, asked.1 - visible.1);
@@ -201,6 +202,11 @@ pub fn open_agent(app: &AppHandle, session: String) {
     let _ = app.emit_to(LABEL, "agent-target", session);
 }
 
+#[cfg(windows)]
+fn set_activation_token(_: &WebviewWindow, _: Option<&str>) {}
+#[cfg(windows)]
+fn learn_margin(_: &WebviewWindow) {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -231,8 +237,3 @@ mod tests {
         assert_eq!(margin((1100.0, 700.0), (1200.0, 700.0)), None);
     }
 }
-
-#[cfg(windows)]
-fn set_activation_token(_: &WebviewWindow, _: Option<&str>) {}
-#[cfg(windows)]
-fn learn_margin(_: &WebviewWindow) {}

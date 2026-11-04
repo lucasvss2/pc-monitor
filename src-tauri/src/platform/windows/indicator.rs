@@ -1,4 +1,5 @@
 //! Windows notification-area icon. All callbacks run on Tauri's event loop.
+use crate::strings::STRINGS;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -7,17 +8,25 @@ use tauri::{
 
 pub fn start(app: &tauri::AppHandle) {
     let result = (|| -> tauri::Result<()> {
-        let open = MenuItem::with_id(app, "open", "Abrir Painel", true, None::<&str>)?;
+        let open = MenuItem::with_id(
+            app,
+            "open",
+            STRINGS.indicator.open_panel.clone(),
+            true,
+            None::<&str>,
+        )?;
         let exit = MenuItem::with_id(app, "exit", "Sair", true, None::<&str>)?;
         let menu = Menu::with_items(app, &[&open, &exit])?;
         let pixels = crate::icon::draw(Default::default(), 32);
         let rgba: Vec<_> = pixels
             .argb
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|p| [p[1], p[2], p[3], p[0]])
             .collect();
         let tray = TrayIconBuilder::with_id("monitor")
-            .tooltip("kvojps-monitor")
+            .tooltip(&STRINGS.indicator.title)
             .icon(tauri::image::Image::new_owned(rgba, 32, 32))
             .menu(&menu)
             .show_menu_on_left_click(false)

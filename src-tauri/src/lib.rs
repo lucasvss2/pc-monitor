@@ -2,6 +2,14 @@
 #![cfg_attr(feature = "fixtures", allow(dead_code))]
 
 mod agents;
+// This foundation keeps shared rules available to tests; its native collector is not active yet.
+#[cfg_attr(
+    windows,
+    allow(
+        dead_code,
+        reason = "Windows collector is a later implementation stage"
+    )
+)]
 mod ai;
 #[cfg_attr(windows, path = "platform/windows/autostart.rs")]
 mod autostart;
@@ -19,15 +27,38 @@ mod icon;
 mod indicator;
 mod lifecycle;
 mod module;
+// This foundation keeps shared rules available to tests; its native collector is not active yet.
+#[cfg_attr(
+    windows,
+    allow(
+        dead_code,
+        reason = "Windows collector is a later implementation stage"
+    )
+)]
 mod network;
 mod panel;
 mod persistence;
 mod platform;
+#[cfg_attr(
+    windows,
+    allow(
+        dead_code,
+        reason = "Some shared ports await the remaining Windows collectors"
+    )
+)]
 mod ports;
 mod releases;
 mod snapshot;
 mod state;
 mod strings;
+// This foundation keeps shared rules available to tests; its native collector is not active yet.
+#[cfg_attr(
+    windows,
+    allow(
+        dead_code,
+        reason = "Windows collector is a later implementation stage"
+    )
+)]
 mod system;
 mod trello;
 
@@ -61,6 +92,7 @@ pub fn run() {
 
             let execution = Execution {
                 executable: std::env::current_exe()?,
+                #[cfg(target_os = "linux")]
                 appimage: std::env::var_os("APPIMAGE").map(Into::into),
             };
             let first = state.first_execution();
@@ -236,9 +268,9 @@ mod build_tests {
         }
         let config = include_str!("../tauri.conf.json");
         assert!(!config.contains("fixtures"));
-        assert!(
-            include_str!("fixtures.rs").contains("#[cfg(not(debug_assertions))]\ncompile_error!")
-        );
+        assert!(include_str!("fixtures.rs")
+            .replace("\r\n", "\n")
+            .contains("#[cfg(not(debug_assertions))]\ncompile_error!"));
         let scripts = include_str!("../../package.json");
         assert!(scripts.contains("\"dev:fixtures\": \"tauri dev --features fixtures\""));
         assert!(scripts.contains("\"build\": \"vite build\""));
