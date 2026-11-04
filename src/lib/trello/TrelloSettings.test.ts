@@ -62,7 +62,7 @@ it("keeps the board list open after validating when the account keeps its board"
 it.each([
   ["invalidCredential", "Key ou token inválido"],
   ["offline", "Sem conexão, tente de novo"],
-  ["keyringUnavailable", "GNOME Keyring indisponível. Ative ou desbloqueie o chaveiro para salvar; a key e o token não foram salvos."],
+  ["keyringUnavailable", "Cofre do sistema indisponível; a key e o token não foram salvos."],
 ])("shows %s beside the fields", async (error, message) => {
   render(TrelloSettings, props(emptyJson, { connect: vi.fn().mockRejectedValue(error) }));
   await fill("0123abcd", "private-token");

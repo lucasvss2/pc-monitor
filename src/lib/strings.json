@@ -186,7 +186,7 @@
       "invalidToken": "Token inválido",
       "missingRepo": "Falta o escopo repo",
       "offline": "Sem conexão, tente de novo",
-      "keyringUnavailable": "GNOME Keyring indisponível. Ative ou desbloqueie o chaveiro para salvar; o token não foi salvo."
+      "keyringUnavailable": "Cofre do sistema indisponível; o token não foi salvo."
     },
     "configureGithub": "Configurar GitHub",
     "reconnect": "Reconectar",
@@ -249,9 +249,9 @@
     "credentialErrors": {
       "invalidCredential": "Key ou token inválido",
       "offline": "Sem conexão, tente de novo",
-      "keyringUnavailable": "GNOME Keyring indisponível. Ative ou desbloqueie o chaveiro para salvar; a key e o token não foram salvos."
+      "keyringUnavailable": "Cofre do sistema indisponível; a key e o token não foram salvos."
     },
-    "disconnectFailed": "Não foi possível apagar a key e o token: GNOME Keyring indisponível.",
+    "disconnectFailed": "Não foi possível apagar a key e o token: cofre do sistema indisponível.",
     "pendingToken": "Token gerado? Cole-o nas Configurações para concluir.",
     "reconnect": "Reconectar",
     "configureTrello": "Configurar Trello",

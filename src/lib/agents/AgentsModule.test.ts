@@ -244,3 +244,8 @@ it("reaches a notification target that arrives in a later snapshot without movin
   await vi.waitFor(() => expect(scroll.mock.contexts).toContain(target));
   expect(close).toHaveFocus();
 });
+
+it("labels partial native discovery instead of implying complete session coverage", () => {
+  render(AgentsModule, { data: { ...empty, discoveryPartial: true } });
+  expect(screen.getByText("Descoberta de sessões ainda incompleta nesta versão Windows.")).toBeVisible();
+});

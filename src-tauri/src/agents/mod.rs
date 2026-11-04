@@ -49,6 +49,7 @@ pub struct Session {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Data {
+    discovery_partial: bool,
     hooks_enabled: bool,
     sessions: Vec<Session>,
     closed: Vec<Session>,
@@ -124,6 +125,7 @@ struct Observation {
 }
 
 pub struct Monitor<P, C> {
+    discovery_partial: bool,
     hooks_enabled: bool,
     hooked_at: std::collections::HashMap<String, u64>,
     notifications: notifications::Policy,
@@ -138,6 +140,7 @@ pub struct Monitor<P, C> {
 impl<P: Processes, C: Clock> Monitor<P, C> {
     pub fn new(process: P, clock: C) -> Self {
         Self {
+            discovery_partial: false,
             hooks_enabled: false,
             hooked_at: Default::default(),
             notifications: Default::default(),
@@ -154,6 +157,7 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
         self.notifications = notifications::Policy::new(sink);
         self
     }
+    #[cfg(target_os = "linux")]
     fn with_codex(mut self, source: impl codex::Source + 'static) -> Self {
         self.codex = Some(Box::new(source));
         self
@@ -365,6 +369,7 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
         self.sessions
             .sort_by_key(|s| (s.state != SessionState::Waiting, s.started_at, s.id.clone()));
         Data {
+            discovery_partial: self.discovery_partial,
             notifications_available: self.notifications.available(),
             notification_preferences: self.notifications.preferences,
             accent_dot: self
@@ -406,6 +411,10 @@ pub fn start(app: tauri::AppHandle) {
         let (observations, tracked) = polling(home.join(".codex"));
         let mut monitor = Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock)
             .with_notifications(crate::platform::agent_notifications(app.clone()));
+        #[cfg(windows)]
+        {
+            monitor.discovery_partial = true;
+        }
         monitor.hooks_enabled = configuration.enabled();
         loop {
             for (enabled, reply) in receiver.try_iter() {

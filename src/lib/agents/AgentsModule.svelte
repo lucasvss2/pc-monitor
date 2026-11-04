@@ -121,6 +121,9 @@
   {#if absence}
     <AbsentArea {absence} />
   {:else}
+  {#if data?.discoveryPartial}
+    <small class="line" role="status">Descoberta de sessões ainda incompleta nesta versão Windows.</small>
+  {/if}
   {#if data?.failed}
     <small role="status" class="line alert"><span aria-hidden="true">{"⚠ "}</span>{[t.agents.failure, data.lastSuccessAt != null && interpolate(t.agents.lastRead, { time: time.format(data.lastSuccessAt) })].filter(Boolean).join(" · ")}</small>
   {/if}

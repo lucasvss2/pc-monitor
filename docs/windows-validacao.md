@@ -10,6 +10,8 @@ Testes de configuração de hooks usam diretórios temporários. Nenhum instala 
 
 O runner `windows-2025` comprova execução das APIs no Windows do runner. Não substitui uma sessão gráfica em Windows 11 x64 nem aceite Ubuntu/GNOME/Wayland. Depois das verificações, o workflow oferece um executável experimental sem assinatura como artefato temporário, sem publicar release.
 
+Durante este incremento, os coletores ainda inativos no Windows e suas portas preservadas têm exceções localizadas somente para `dead_code`, com motivo no código. A CI conserva `-D warnings` para os demais lints e continua verificando Ubuntu integralmente. Remover essas exceções ao ativar os coletores nas próximas etapas; elas não validam suporte às fontes ausentes.
+
 ## Aceite em sessão gráfica
 
 Registrar versão de SO/app, cenário, resultado e limitação sem valores privados ou capturas brutas. Usar sessões/projetos de exemplo e seguir [sanitização](agents/sanitizacao.md).

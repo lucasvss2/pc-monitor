@@ -82,7 +82,7 @@ it.each([
   ["invalidToken", "Token inválido"],
   ["missingRepo", "Falta o escopo repo"],
   ["offline", "Sem conexão, tente de novo"],
-  ["keyringUnavailable", "GNOME Keyring indisponível. Ative ou desbloqueie o chaveiro para salvar; o token não foi salvo."],
+  ["keyringUnavailable", "Cofre do sistema indisponível; o token não foi salvo."],
 ])("keeps the form open and shows %s beside the token field", async (error, message) => {
   render(GithubSettings, { data: missing, save: vi.fn().mockRejectedValue(error) });
   await submitToken();

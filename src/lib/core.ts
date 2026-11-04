@@ -296,6 +296,7 @@ export interface AgentSession {
   lastState?: "working" | "waiting" | "done" | "failed" | null;
 }
 export interface AgentsData {
+  discoveryPartial?: boolean;
   notificationsAvailable?: boolean;
   hooksEnabled?: boolean;
   notificationPreferences?: AgentNotificationPreferences;
