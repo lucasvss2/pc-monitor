@@ -10,6 +10,12 @@ function core(): Core { return { initialState:vi.fn(), listenSnapshots:vi.fn(), 
 const data = () => structuredClone(full) as TasksData;
 const choices: TaskTransition[] = [{ id:"1",name:"Iniciar",status:"Em andamento",requiresFields:false },{ id:"2",name:"Concluir",status:"Concluído",requiresFields:true }];
 
+it("explains that no reading exists after an offline restart without claiming disconnection", () => {
+  render(TasksModule,{data:{provider:"jira",contextGeneration:1,canWrite:false,state:"missingCredential",paused:true,refreshing:false,account:null,boards:[],board:null,columns:[],issues:[]},generation:1,core:core(),configure:vi.fn()});
+  expect(screen.getByText(/Ainda não há leitura disponível/)).toBeInTheDocument();
+  expect(screen.queryByText("Jira não conectado")).not.toBeInTheDocument();
+});
+
 it("selects a provider with its expected generation and does not claim completion optimistically", async () => {
   let finish!: () => void;
   const api=core();api.switchTaskProvider=vi.fn(()=>new Promise<void>(resolve=>finish=resolve));

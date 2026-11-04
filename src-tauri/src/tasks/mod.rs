@@ -444,7 +444,8 @@ fn decorate(
         json!(can_write && snapshot.data["paused"] != true && snapshot.data["rateLimited"] != true);
     snapshot.data["writeBusy"] = json!(busy);
     snapshot.data["initializing"] = json!(
-        snapshot.data["state"] == "missingCredential"
+        snapshot.data["paused"] != true
+            && snapshot.data["state"] == "missingCredential"
             && (snapshot.data["operation"].is_null()
                 || snapshot.data["operation"]["state"] == "running")
     );

@@ -25,7 +25,9 @@
   {#if data?.board}<p>Quadro: {data.board.name}</p>{/if}
   {#if data?.state === "invalidCredential"}<p role="alert">{taskError("invalidCredential")}</p>{/if}
   {#if message}<p role="alert">{message}</p>{/if}
-  {#if !data}<p role="status">Verificando conexão…</p>{:else if needsCredential}
+  {#if !data}<p role="status">Verificando conexão…</p>
+  {:else if data.paused && data.state === "missingCredential"}<p role="status">Coleta pausada. A conexão preservada será verificada quando a coleta retomar.</p>
+  {:else if needsCredential}
     <form onsubmit={submit}>
       <label for="{id}-site">Site Jira Cloud</label><input id="{id}-site" type="url" placeholder="https://exemplo.atlassian.net" bind:value={site} required autocomplete="off" />
       <label for="{id}-email">E-mail da conta Atlassian</label><input id="{id}-email" type="email" bind:value={email} required autocomplete="off" />

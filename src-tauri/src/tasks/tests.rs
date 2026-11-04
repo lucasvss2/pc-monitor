@@ -747,3 +747,28 @@ fn unavailable_transitions_are_hidden_and_unknown_screen_fields_use_the_browser(
         .iter()
         .any(|p| p.starts_with("POST")));
 }
+
+#[test]
+fn offline_restart_has_no_jira_reading_and_recovery_preserves_the_connection() {
+    let env = Environment::seeded();
+    let _ = env.jira_tasks();
+    let credential = env.vault.read("jira").unwrap();
+    let mut tasks = env.tasks();
+    tasks.lifecycle(crate::lifecycle::Status::default());
+    let calls = env.jira.requests.lock().unwrap().len();
+    tasks.poll(true, false, &mut |_| {});
+    let snapshot = tasks.snapshot();
+    assert_eq!(snapshot.data["paused"], true);
+    assert_eq!(snapshot.data["initializing"], false);
+    assert!(snapshot.data["issues"].as_array().unwrap().is_empty());
+    assert_eq!(env.jira.requests.lock().unwrap().len(), calls);
+    tasks.lifecycle(crate::lifecycle::Status {
+        online: true,
+        generation: 1,
+        ready_at: 0,
+    });
+    tasks.poll(true, false, &mut |_| {});
+    assert_eq!(tasks.snapshot().data["state"], "ready");
+    assert_eq!(tasks.snapshot().data["canWrite"], true);
+    assert_eq!(env.vault.read("jira").unwrap(), credential);
+}

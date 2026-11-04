@@ -54,13 +54,15 @@
 <svelte:window onkeydowncapture={escape} />
 
 {#if !data}<p role="status">Aguardando leitura do Jira…</p>
+{:else if data.paused && data.lastSuccessAt == null}
+  <p role="status">Coleta pausada. Ainda não há leitura disponível. A conexão será verificada quando a coleta retomar.</p>
 {:else if data.state === "missingCredential" || data.state === "invalidCredential"}
   <p>{data.state === "missingCredential" ? "Jira não conectado" : taskError("invalidCredential")}</p><button onclick={configure}>Configurar Jira</button>
 {:else if data.state === "chooseBoard"}
   <p>Selecione um quadro Jira nas Configurações.</p><button onclick={configure}>Escolher quadro Jira</button>
 {:else}
   {#if data.refreshing}<p role="status">Atualizando Jira…</p>{/if}
-  {#if data.paused}<p role="status">Sem conexão. Exibindo a última leitura em memória.</p>{/if}
+  {#if data.paused}<p role="status">Coleta pausada. Exibindo a última leitura em memória.</p>{/if}
   {#if data.state === "error"}<p role="alert">{taskError(data.reason ?? "offline")}</p>{/if}
   {#if data.lastSuccessAt != null && (data.paused || data.state !== "ready")}<p class="muted">Última leitura: {new Date(data.lastSuccessAt).toLocaleString("pt-BR")}</p>{/if}
   {#if data.board}
