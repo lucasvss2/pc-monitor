@@ -5,7 +5,7 @@ mod agents;
 // This foundation keeps shared rules available to tests; its native collector is not active yet.
 #[cfg_attr(
     windows,
-    expect(
+    allow(
         dead_code,
         reason = "Windows collector is a later implementation stage"
     )
@@ -30,7 +30,7 @@ mod module;
 // This foundation keeps shared rules available to tests; its native collector is not active yet.
 #[cfg_attr(
     windows,
-    expect(
+    allow(
         dead_code,
         reason = "Windows collector is a later implementation stage"
     )
@@ -41,7 +41,7 @@ mod persistence;
 mod platform;
 #[cfg_attr(
     windows,
-    expect(
+    allow(
         dead_code,
         reason = "Some shared ports await the remaining Windows collectors"
     )
@@ -54,7 +54,7 @@ mod strings;
 // This foundation keeps shared rules available to tests; its native collector is not active yet.
 #[cfg_attr(
     windows,
-    expect(
+    allow(
         dead_code,
         reason = "Windows collector is a later implementation stage"
     )

@@ -15,7 +15,7 @@ use crate::ports::*;
 use std::{io, path::Path};
 use windows::core::PCWSTR;
 
-#[expect(
+#[allow(
     dead_code,
     reason = "Adapter is retained for the next Windows collector stage"
 )]
@@ -67,7 +67,7 @@ pub fn open_external(args: &[&str]) -> Result<String, ()> {
     }
 }
 
-#[expect(
+#[allow(
     dead_code,
     reason = "Adapter is retained for the next Windows collector stage"
 )]
@@ -85,12 +85,12 @@ impl Programs for SystemPrograms {
 }
 
 /// Polling fallback: the collector owns its cadence and rereads through Files.
-#[expect(
+#[allow(
     dead_code,
     reason = "Adapter is retained for the next Windows collector stage"
 )]
 pub struct FileWatch;
-#[expect(
+#[allow(
     dead_code,
     reason = "Adapter is retained for the next Windows collector stage"
 )]
