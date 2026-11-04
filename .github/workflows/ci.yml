@@ -99,6 +99,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = (Join-Path $cli 'node_modules/.bin') + ';' + $env:PATH
           $env:CODEX_HOME = Join-Path $env:RUNNER_TEMP 'monitor-ai-isolated-home'
+          New-Item -ItemType Directory -Path $env:CODEX_HOME -Force | Out-Null
           cargo test --locked windows_npm_codex_initializes_over_stdio_without_login -- --ignored
           exit $LASTEXITCODE
 
