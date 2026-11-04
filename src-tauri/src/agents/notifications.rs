@@ -140,10 +140,7 @@ impl Policy {
                 Provider::Claude => "Claude Code",
                 Provider::Codex => "Codex",
             };
-            let mut title = format!("{provider} · {}", session.project);
-            if let Some(name) = &session.name {
-                title.push_str(&format!(" · {name}"));
-            }
+            let title = provider.to_string();
             self.recent.insert(session.id.clone(), (now, session.state));
             if self.recent.len() >= 3 {
                 for id in self.recent.keys() {

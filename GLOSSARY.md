@@ -1,20 +1,48 @@
 # kvojps-monitor
 
-Aplicativo pessoal de bandeja que reúne num só lugar, de forma enxuta, dados que hoje exigem abrir vários apps e abas: uso de IA, sessões de agentes, atividade no GitHub, quadro do Trello e saúde da rede.
+Aplicativo pessoal de bandeja que reúne num só lugar, de forma enxuta, dados que hoje exigem abrir vários apps e abas: uso de IA, sessões de agentes, atividade no GitHub, tarefas do Trello ou Jira e saúde da rede.
 
 ## Language
 
 **Indicador**:
-O ícone do app na barra superior do sistema; ponto de entrada sempre visível.
+O ícone do app na barra superior do Ubuntu ou na área de notificação do Windows; ponto de entrada do Painel.
 _Avoid_: Doca, dock, ícone de bandeja
 
 **Painel**:
 A janela que abre a partir do Indicador e exibe os Módulos.
 _Avoid_: Doca, popup, dashboard
 
+**Modo do Painel**:
+A forma de apresentação do Painel: completo ou reduzido. O reduzido apresenta resumos dos Módulos com acesso ao completo.
+_Avoid_: Minimizado, movimento reduzido, aparência
+
+**Modo preferido do Painel**:
+O Modo do Painel escolhido explicitamente pelo usuário e lembrado para reaberturas. Uma Apresentação contextual pode exibir outro modo temporariamente sem substituir essa escolha.
+_Avoid_: Modo atual, última tela, apresentação contextual
+
+**Apresentação contextual**:
+A exibição temporária do Painel completo para Configurações, detalhes de Módulo ou notificação, com retorno à apresentação anterior e preservação do Modo preferido do Painel.
+_Avoid_: Troca de Modo, nova Âncora
+
+**Fixação do Painel**:
+A preferência “Manter no topo”, que mantém o Painel acima de janelas comuns sem exigir que ele tenha foco. É independente do Modo do Painel.
+_Avoid_: Foco obrigatório, modo reduzido, bloqueio da janela
+
+**Relógio do Painel**:
+A indicação de hora e data locais do sistema apresentada na área global do Painel, nos modos completo e reduzido.
+_Avoid_: Módulo Relógio, horário da fonte de dados
+
 **Módulo**:
-Uma área do Painel dedicada a uma fonte de dados (IA, Agentes, GitHub, Trello, Rede, Sistema).
+Uma área do Painel dedicada a um conjunto de informações (IA, Agentes, GitHub, Tarefas, Rede, Sistema).
 _Avoid_: Widget, aba, card
+
+**Tarefas**:
+O Módulo que apresenta o quadro e os itens do Provedor de tarefas ativo, identificado como Trello ou Jira.
+_Avoid_: Módulo Trello, Módulo Jira
+
+**Provedor de tarefas**:
+O serviço escolhido como fonte do Módulo Tarefas: Trello ou Jira. Apenas um está ativo por vez.
+_Avoid_: Provedor de IA, integração ativa sem indicar o Módulo
 
 **Âncora**:
 O último Módulo com que o usuário interagiu no Painel; é lembrada entre execuções e restaurada ao reabrir. Abrir pelo clique numa notificação não a altera.

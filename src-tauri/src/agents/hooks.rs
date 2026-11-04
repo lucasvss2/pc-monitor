@@ -5,6 +5,35 @@ use serde_json::{json, Value};
 use std::io;
 
 const MANIFEST: &str = ".config/kvojps-monitor/agent-hooks.json";
+
+fn hook_command(executable: &str, provider: &str, event: &str) -> String {
+    #[cfg(target_os = "linux")]
+    {
+        format!(
+            "'{}' hook {provider} {event}",
+            executable.replace('\'', "'\\''")
+        )
+    }
+    #[cfg(windows)]
+    {
+        use base64::Engine;
+        // EncodedCommand avoids interpretation by the caller's cmd/Bash shell.
+        let script = format!(
+            "& '{}' hook {provider} {event}",
+            executable.replace('\'', "''")
+        );
+        let bytes: Vec<_> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
+        format!(
+            "powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand {}",
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        )
+    }
+}
+
+#[cfg(debug_assertions)]
+pub(crate) fn validation_command(executable: &str) -> String {
+    hook_command(executable, "codex", "UserPromptSubmit")
+}
 const PROVIDERS: &[(&str, &str, &[&str])] = &[
     (
         "claude",
@@ -81,7 +110,7 @@ impl<S: Storage> Configuration<S> {
                     .ok_or_else(invalid)?;
                 let mut entries = vec![];
                 for event in *events {
-                    let entry = json!({"hooks":[{"type":"command","command":format!("'{}' hook {provider} {event}", self.executable.replace('\'', "'\\''")),"timeout":1}]});
+                    let entry = json!({"hooks":[{"type":"command","command":hook_command(&self.executable, provider, event),"timeout":1}]});
                     let missing = !hooks.contains_key(*event);
                     let list = hooks
                         .entry(*event)
@@ -373,8 +402,7 @@ pub fn forward(
     }
 }
 pub fn socket_path() -> Option<std::path::PathBuf> {
-    std::env::var_os("XDG_RUNTIME_DIR")
-        .map(|dir| std::path::PathBuf::from(dir).join("kvojps-monitor.sock"))
+    crate::platform::hook_endpoint()
 }
 
 /// The core requests bounded input through a port; adapters own OS time and stdin.
@@ -392,7 +420,7 @@ pub fn run(provider: &str, event: &str) {
     let Some(path) = socket_path() else {
         return;
     };
-    if let Ok(mut socket) = crate::ports::UnixHookSocket::sender(&path) {
+    if let Ok(mut socket) = crate::ports::NativeHookSocket::sender(&path) {
         deliver(provider, event, &mut crate::ports::TimedStdin, &mut socket);
     }
 }

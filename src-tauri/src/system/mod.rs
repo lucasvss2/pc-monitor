@@ -1,6 +1,6 @@
 //! System module: CPU, temperature, RAM, disks and battery, collected only while visible.
 
-mod battery;
+pub(crate) mod battery;
 mod readings;
 
 use std::collections::VecDeque;
@@ -14,10 +14,12 @@ use tauri::AppHandle;
 use crate::module::Module;
 use crate::ports::{Clock, Files, RootFilesystem, SystemClock};
 use crate::snapshot::{self, Snapshot};
+use battery::Battery;
 #[cfg(test)]
 use battery::BatteryState;
 pub use battery::UPower;
-use battery::{Battery, UPowerDbus};
+#[cfg(target_os = "linux")]
+use battery::UPowerDbus;
 use readings::{Disk, Jiffies, Memory, Temperature};
 
 const CPU_INTERVAL: u64 = 2_000;
@@ -175,6 +177,7 @@ enum Event {
 pub struct Collector(Sender<Event>);
 
 impl Collector {
+    #[cfg(target_os = "linux")]
     pub fn start(app: AppHandle) -> Self {
         let (tx, rx) = mpsc::channel();
         let notice = tx.clone();

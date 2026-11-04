@@ -4,12 +4,7 @@ use std::io;
 use zbus::blocking::{Connection as DbusConnection, Proxy};
 use zbus::zvariant::OwnedObjectPath;
 
-pub trait NetworkManager: Send {
-    fn connection(&self) -> io::Result<Connection>;
-    fn check_portal(&self) -> Option<bool> {
-        None
-    }
-}
+use super::NetworkManager;
 
 /// Properties read from D-Bus before selecting a physical link.
 #[derive(Clone, Deserialize)]

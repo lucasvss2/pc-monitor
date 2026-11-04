@@ -155,7 +155,7 @@ impl<F: Files> Source for Adapter<F> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 pub(super) mod tests {
     use super::*;
     use crate::ports::fakes::FakeRoot;
@@ -180,7 +180,7 @@ struct Thread {
     git_branch: Option<String>,
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 impl Adapter<crate::ports::fakes::FakeRoot> {
     pub(super) fn test_files(&self) -> crate::ports::fakes::FakeRoot {
         self.files.clone()

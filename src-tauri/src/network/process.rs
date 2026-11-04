@@ -330,6 +330,7 @@ fn decode(mut bytes: &[u8], uid: u32, addresses: &[std::net::IpAddr]) -> io::Res
 }
 
 pub struct KernelDiagnostics;
+#[cfg(target_os = "linux")]
 impl Diagnostics for KernelDiagnostics {
     fn uid(&self) -> u32 {
         unsafe { libc::getuid() }

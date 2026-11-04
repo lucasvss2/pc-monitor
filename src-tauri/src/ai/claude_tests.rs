@@ -271,6 +271,7 @@ fn the_copy_keeps_only_the_five_hour_and_weekly_windows() {
 }
 
 /// The generated wrapper, run by a real shell as Claude Code would.
+#[cfg(target_os = "linux")]
 #[test]
 fn the_wrapper_passes_stdin_to_the_original_command_and_returns_its_output() {
     use std::io::Write;

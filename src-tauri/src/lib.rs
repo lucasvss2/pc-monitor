@@ -3,8 +3,9 @@
 
 mod agents;
 mod ai;
+#[cfg_attr(windows, path = "platform/windows/autostart.rs")]
 mod autostart;
-#[cfg(feature = "fixtures")]
+#[cfg(all(feature = "fixtures", target_os = "linux"))]
 mod capture;
 mod collection;
 mod commands;
@@ -14,12 +15,14 @@ mod fixtures;
 mod general;
 mod github;
 mod icon;
+#[cfg_attr(windows, path = "platform/windows/indicator.rs")]
 mod indicator;
 mod lifecycle;
 mod module;
 mod network;
 mod panel;
 mod persistence;
+mod platform;
 mod ports;
 mod releases;
 mod snapshot;
@@ -30,11 +33,10 @@ mod trello;
 
 use std::sync::Mutex;
 
-use ksni::TrayMethods;
 use tauri::{Manager, RunEvent, WindowEvent};
 
 use autostart::Execution;
-use indicator::Indicator;
+
 use snapshot::Snapshots;
 use state::AppState;
 
@@ -64,7 +66,7 @@ pub fn run() {
             let first = state.first_execution();
             let dir_autostart = dir_config.join("autostart");
             if let Err(e) = autostart::synchronize(
-                &crate::persistence::DiskStorage(dir_autostart.clone()),
+                &crate::platform::startup_storage(dir_autostart.clone()),
                 &execution,
                 first,
             ) {
@@ -80,19 +82,7 @@ pub fn run() {
             desktop_theme::start(app.handle());
             start_sources(app.handle());
 
-            let indicator = Indicator {
-                app: app.handle().clone(),
-                state: Default::default(),
-            };
-            let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                match indicator.spawn().await {
-                    Ok(handle) => {
-                        app_handle.manage(handle);
-                    }
-                    Err(e) => eprintln!("indicator: failed to register tray: {e}"),
-                }
-            });
+            indicator::start(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -154,13 +144,22 @@ pub fn run() {
 }
 
 #[cfg(not(feature = "fixtures"))]
-fn second_launch(app: &tauri::AppHandle, _args: &[String]) {
+fn second_launch(app: &tauri::AppHandle, args: &[String]) {
+    if args.iter().any(|arg| arg == "--autostart") {
+        return;
+    }
     panel::open(app)
 }
 
 /// In fixture mode, `--capture` asks the running instance for a panel capture.
 #[cfg(feature = "fixtures")]
 fn second_launch(app: &tauri::AppHandle, args: &[String]) {
+    #[cfg(windows)]
+    {
+        let _ = args;
+        panel::open(app);
+    }
+    #[cfg(target_os = "linux")]
     match capture::request(args) {
         None => panel::open(app),
         Some(Ok(request)) => capture::start(app, request),
@@ -193,6 +192,17 @@ fn start_sources(app: &tauri::AppHandle) {
 /// Best-effort hook subprocess entry point, before GUI/single-instance setup.
 pub fn run_hook(provider: &str, event: &str) {
     agents::hooks::run(provider, event);
+}
+
+/// Development-only command generator for the native subprocess integration test.
+#[cfg(debug_assertions)]
+pub fn validation_hook_command(executable: &str) -> String {
+    agents::hooks::validation_command(executable)
+}
+
+#[cfg(debug_assertions)]
+pub fn validation_hook_endpoint() -> Option<std::path::PathBuf> {
+    agents::hooks::socket_path()
 }
 
 #[cfg(test)]

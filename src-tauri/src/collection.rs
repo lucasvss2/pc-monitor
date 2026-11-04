@@ -9,11 +9,14 @@ use crate::state::AppState;
 use crate::system;
 
 pub fn start(app: &AppHandle) {
+    #[cfg(target_os = "linux")]
     app.manage(system::Collector::start(app.clone()));
+    #[cfg(target_os = "linux")]
     crate::network::start(app.clone());
     crate::lifecycle::start(app);
     crate::github::start(app.clone());
     crate::trello::start(app.clone());
+    #[cfg(target_os = "linux")]
     crate::ai::start(app.clone());
     crate::agents::start(app.clone());
 }
@@ -37,7 +40,9 @@ pub fn visibility_changed(app: &AppHandle) {
             state.is_visible(Module::Network),
         )
     };
-    app.state::<system::Collector>().report(system);
+    if let Some(collector) = app.try_state::<system::Collector>() {
+        collector.report(system);
+    }
     if let Some(collector) = app.try_state::<crate::network::Collector>() {
         let _ = collector.0.send(crate::network::Command::Visible(network));
     }

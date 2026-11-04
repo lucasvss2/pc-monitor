@@ -50,10 +50,11 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-function fakeCore(initial: { lastAnchor?: Module; snapshots?: Snapshot[]; agentTarget?: string } = {}) {
+function fakeCore(initial: { lastAnchor?: Module; snapshots?: Snapshot[]; agentTarget?: string; unavailableModules?: Module[] } = {}) {
   let listener: ((s: Snapshot) => void) | undefined;
   const core = {
     initialState: vi.fn(async (): Promise<InitialState> => ({
+      unavailableModules: initial.unavailableModules,
       lastAnchor: initial.lastAnchor ?? "ai",
       agentTarget: initial.agentTarget ?? null,
       snapshots: initial.snapshots ?? [],
@@ -838,4 +839,13 @@ it("keeps six modules accessible while simultaneous results expire independently
   } finally {
     vi.useRealTimers();
   }
+});
+
+// Synthetic native capability snapshot: unavailable metrics must not look healthy.
+it("explains unavailable native modules instead of rendering metric values or actions", async () => {
+  const { core } = fakeCore({ unavailableModules: ["ai", "network", "system"], snapshots: [{ module: "system", updatedAt: 1000, data: notebook }] });
+  render(Panel, { core });
+  expect(await screen.findAllByText("Indisponível no Windows nesta versão de validação.")).toHaveLength(3);
+  expect(within(section("Sistema")).queryByText(/CPU/)).not.toBeInTheDocument();
+  expect(within(section("Rede")).queryByRole("button")).not.toBeInTheDocument();
 });

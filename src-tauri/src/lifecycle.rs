@@ -55,7 +55,9 @@ impl<N: crate::network::NetworkManager, S: Session, R: Clock> Lifecycle<N, S, R>
     }
 }
 
+#[cfg(target_os = "linux")]
 pub struct Logind(std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<bool>>>);
+#[cfg(target_os = "linux")]
 impl Logind {
     pub fn connect() -> Self {
         let state = std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new()));
@@ -83,11 +85,13 @@ impl Logind {
         Self(state)
     }
 }
+#[cfg(target_os = "linux")]
 fn sleep_state(message: &zbus::Message) -> zbus::Result<bool> {
     let (sleeping,): (bool,) = message.body().deserialize()?;
     Ok(sleeping)
 }
 
+#[cfg(target_os = "linux")]
 impl Session for Logind {
     fn preparing_for_sleep(&self) -> Option<bool> {
         self.0.lock().unwrap().pop_front()
@@ -157,8 +161,8 @@ pub fn start(app: &tauri::AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let mut lifecycle = Lifecycle::new(
-            crate::network::NetworkManagerDbus::connect(),
-            Logind::connect(),
+            crate::platform::connectivity(),
+            crate::platform::session(),
             crate::ports::SystemClock,
         );
         let mut generation = 0;
@@ -170,11 +174,12 @@ pub fn start(app: &tauri::AppHandle) {
                 && status.generation != generation
             {
                 generation = status.generation;
-                app.state::<crate::system::Collector>().resume();
-                let _ = app
-                    .state::<crate::network::Collector>()
-                    .0
-                    .send(crate::network::Command::Resume);
+                if let Some(collector) = app.try_state::<crate::system::Collector>() {
+                    collector.resume();
+                }
+                if let Some(collector) = app.try_state::<crate::network::Collector>() {
+                    let _ = collector.0.send(crate::network::Command::Resume);
+                }
             }
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
@@ -211,7 +216,7 @@ mod scheduling_tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod adapter_tests {
     use super::*;
     #[test]

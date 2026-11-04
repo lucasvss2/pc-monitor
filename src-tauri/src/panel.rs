@@ -88,6 +88,7 @@ pub fn open_with_activation_token(app: &AppHandle, token: Option<&str>) {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn set_activation_token(window: &WebviewWindow, token: Option<&str>) {
     use gtk::prelude::*;
     if let Some(token) = token {
@@ -112,6 +113,7 @@ fn fit(window: &WebviewWindow) {
 
 /// Once the content allocation settles on the window size GTK chose, compare it with
 /// the size asked for and, if the window took a margin, remember it and ask again.
+#[cfg(target_os = "linux")]
 fn learn_margin(window: &WebviewWindow) {
     use gtk::prelude::*;
     if window.state::<Margin>().0.lock().unwrap().is_some() {
@@ -229,3 +231,8 @@ mod tests {
         assert_eq!(margin((1100.0, 700.0), (1200.0, 700.0)), None);
     }
 }
+
+#[cfg(windows)]
+fn set_activation_token(_: &WebviewWindow, _: Option<&str>) {}
+#[cfg(windows)]
+fn learn_margin(_: &WebviewWindow) {}

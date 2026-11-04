@@ -176,8 +176,10 @@ impl<P: SecurityReadings> Check for SystemCheck<P> {
             })
     }
 }
+#[cfg(target_os = "linux")]
 type ResolveHostnameResponse = (Vec<(i32, i32, Vec<u8>)>, String, u64);
 
+#[cfg(target_os = "linux")]
 impl SecurityReadings for SystemReadings {
     fn resolver(&self) -> Option<DnsResponse> {
         // Use a fresh name for each query and the current connection resolver, including VPN.

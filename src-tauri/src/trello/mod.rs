@@ -744,7 +744,7 @@ pub fn start(app: tauri::AppHandle) {
     app.manage(Collector(tx));
     std::thread::spawn(move || {
         let mut trello = Trello::new(TrelloHttp, crate::ports::SystemClock)
-            .with_keyring(crate::ports::SecretService)
+            .with_keyring(crate::ports::NativeKeyring)
             .with_lifecycle(app.state::<crate::lifecycle::Shared>().inner().clone());
         if let (Some(cache), Some(state)) = (dirs::cache_dir(), dirs::state_dir()) {
             use crate::persistence::{Cache, DiskStorage, LocalPersistence, Logs};

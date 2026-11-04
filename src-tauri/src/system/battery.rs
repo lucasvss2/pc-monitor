@@ -1,11 +1,15 @@
 //! Battery through the UPower DisplayDevice on the system D-Bus.
 
 use std::io;
+#[cfg(target_os = "linux")]
 use std::thread;
 
 use serde::Serialize;
+#[cfg(target_os = "linux")]
 use zbus::blocking::fdo::PropertiesProxy;
+#[cfg(target_os = "linux")]
 use zbus::blocking::Connection;
+#[cfg(target_os = "linux")]
 use zbus::names::InterfaceName;
 
 /// Properties of org.freedesktop.UPower.Device used by this module.
@@ -79,19 +83,25 @@ pub fn read(upower: &impl UPower) -> Option<Battery> {
     })
 }
 
+#[cfg(target_os = "linux")]
 const DESTINATION: &str = "org.freedesktop.UPower";
+#[cfg(target_os = "linux")]
 const PATH: &str = "/org/freedesktop/UPower/devices/DisplayDevice";
+#[cfg(target_os = "linux")]
 const INTERFACE: &str = "org.freedesktop.UPower.Device";
 
 /// Real UPower on the system bus. Without a bus, readings fail and the battery block is hidden.
+#[cfg(target_os = "linux")]
 pub struct UPowerDbus(Option<Connection>);
 
+#[cfg(target_os = "linux")]
 impl UPowerDbus {
     pub fn connect() -> Self {
         UPowerDbus(Connection::system().ok())
     }
 }
 
+#[cfg(target_os = "linux")]
 fn properties(connection: &Connection) -> zbus::Result<PropertiesProxy<'static>> {
     PropertiesProxy::builder(connection)
         .destination(DESTINATION)?
@@ -99,6 +109,7 @@ fn properties(connection: &Connection) -> zbus::Result<PropertiesProxy<'static>>
         .build()
 }
 
+#[cfg(target_os = "linux")]
 impl UPower for UPowerDbus {
     fn display_device(&self) -> io::Result<DisplayDevice> {
         let connection = self
@@ -126,6 +137,7 @@ impl UPower for UPowerDbus {
 }
 
 /// Call notice on each DisplayDevice PropertiesChanged signal, on a dedicated thread.
+#[cfg(target_os = "linux")]
 pub fn listen_upower(notice: impl Fn() + Send + 'static) {
     let listen = move || -> zbus::Result<()> {
         let connection = Connection::system()?;

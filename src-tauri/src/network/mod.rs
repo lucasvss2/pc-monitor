@@ -1,4 +1,5 @@
 //! Continuous network collection with a sanitized cache of the last speed measurement.
+#[cfg(target_os = "linux")]
 mod network_manager;
 mod probe;
 mod process;
@@ -6,11 +7,19 @@ mod security;
 mod speed;
 pub use security::*;
 pub use speed::SpeedResult;
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests;
 
 use crate::ports::{Clock, Files};
-pub use network_manager::{NetworkManager, NetworkManagerDbus};
+pub trait NetworkManager: Send {
+    fn connection(&self) -> std::io::Result<Connection>;
+    fn check_portal(&self) -> Option<bool> {
+        None
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub use network_manager::NetworkManagerDbus;
 pub use probe::{PingSocket, Probe};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -442,6 +451,7 @@ pub enum Command {
     AutomaticSpeed(bool),
 }
 pub struct Collector(pub std::sync::mpsc::Sender<Command>);
+#[cfg(target_os = "linux")]
 pub fn start(app: tauri::AppHandle) {
     use tauri::Manager;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -509,6 +519,7 @@ pub fn start(app: tauri::AppHandle) {
                 }
             }
             if let Some((when, data)) = network.step() {
+                #[cfg(target_os = "linux")]
                 if let Some(handle) =
                     tauri::Manager::try_state::<ksni::Handle<crate::indicator::Indicator>>(&app)
                 {

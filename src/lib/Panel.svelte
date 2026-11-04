@@ -16,6 +16,7 @@
   let { core, prepared = () => {}, failed = () => {}, recovery = false, presented = true }: { core: Core; prepared?: () => void; failed?: () => void; recovery?: boolean; presented?: boolean } = $props();
 
   let area = $state<"panel" | "settings">("panel");
+  let unavailableModules = $state<Module[]>([]);
   /** Last anchor chosen through module interaction; independent from what is visible. */
   let anchor = $state<Module | null>(null);
   let agentRequest = $state(0);
@@ -189,6 +190,7 @@
       if (disposed) return;
       if (!visibilityReceived) nativeVisible = initial.panelVisible ?? false;
       initial.snapshots.forEach(receive);
+      unavailableModules = initial.unavailableModules ?? [];
       if (initial.appearance) appearance.preference = initial.appearance;
       appearance.desktop ??= initial.systemTheme ?? null;
       appearanceRestored = true;
@@ -270,7 +272,12 @@
     aria-label={inCard ? t.modules[module] : undefined} aria-labelledby={inCard ? undefined : `module-${module}-title`}
     tabindex="-1" onfocusin={(event) => remember(module, event)} bind:this={sections[module]}>
     {#if recovery && !snapshots[module]}<p role="status">Restauração local indisponível. Exibindo os dados disponíveis.</p>{/if}
-    {@render body?.()}
+    {#if unavailableModules.includes(module)}
+      <h2 id="module-{module}-title">{t.modules[module]}</h2>
+      <p role="status">Indisponível no Windows nesta versão de validação.</p>
+    {:else}
+      {@render body?.()}
+    {/if}
   </section>
 {/snippet}
 

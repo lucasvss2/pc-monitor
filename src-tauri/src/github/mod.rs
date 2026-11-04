@@ -635,7 +635,7 @@ pub fn start(app: tauri::AppHandle) {
                 crate::ports::SystemClock,
             ),
         }
-        .with_keyring(crate::ports::SecretService);
+        .with_keyring(crate::ports::NativeKeyring);
         crate::snapshot::publish(&app, github.snapshot(false));
         let mut previous_status = (false, 0, 0);
         loop {

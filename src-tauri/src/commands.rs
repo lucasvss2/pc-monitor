@@ -14,6 +14,7 @@ use crate::state::AppState;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitialState {
+    unavailable_modules: Vec<Module>,
     panel_visible: bool,
     last_anchor: Module,
     /// First opening: Settings shows the welcome.
@@ -34,6 +35,11 @@ pub fn initial_state(
 ) -> InitialState {
     let state = state.lock().unwrap();
     InitialState {
+        unavailable_modules: if cfg!(windows) {
+            vec![Module::Ai, Module::Network, Module::System]
+        } else {
+            vec![]
+        },
         panel_visible: {
             use tauri::Manager;
             app.get_webview_window(panel::LABEL)
@@ -275,7 +281,9 @@ pub struct General {
 pub(crate) fn general(state: &AppState, startup: &Startup) -> General {
     General {
         version: env!("CARGO_PKG_VERSION"),
-        autostart: crate::autostart::enabled(&crate::persistence::DiskStorage(startup.dir.clone())),
+        autostart: crate::autostart::enabled(&crate::platform::startup_storage(
+            startup.dir.clone(),
+        )),
         version_check: state.version_check(),
         release: state.available_release(),
     }
@@ -294,7 +302,7 @@ pub fn set_autostart(
     startup: State<Startup>,
 ) -> Result<General, String> {
     crate::autostart::set(
-        &crate::persistence::DiskStorage(startup.dir.clone()),
+        &crate::platform::startup_storage(startup.dir.clone()),
         &startup.execution,
         enabled,
     )

@@ -1,0 +1,9 @@
+# Núcleo compartilhado e adaptadores nativos
+
+Tarefas, Windows e os modos do Painel serão implementados em um único núcleo Rust e uma única UI Svelte. Adaptadores Linux/Windows traduzem observações e ações nativas; adaptadores Trello/Jira preservam a semântica dos serviços. A composição por alvo seleciona dependências, factories e capacidades, mantendo regras de domínio e privacidade compartilhadas.
+
+O seam uniforme de E/S continua formado por portas pequenas e injetáveis. Concretos Linux hoje misturados aos contratos serão isolados; Windows não precisa emular arquivos `/proc` para reutilizar regras. Capturas e parsers específicos permanecem abaixo do adaptador correspondente, enquanto o domínio recebe observações normalizadas. Essa escolha evita duplicar aplicativos ou espalhar condicionais de SO pela UI, ao custo de explicitar contratos e testar cada adaptador em seu ambiente nativo. Não será criado um framework genérico de plugins para dois provedores conhecidos.
+
+A apresentação também usa o mesmo estado de Módulos. Modo preferido salvo e Apresentação contextual são distintos: abrir Configurações, detalhes ou uma notificação pode apresentar o completo com retorno sem substituir a preferência; notificações preservam a Âncora. O controlador deve sobreviver ao fechamento/recriação da webview. Essa separação complementa o ADR 0006 e evita que consultar um detalhe elimine a escolha de acompanhamento reduzido.
+
+Decisão confirmada em 04/11/2026. Contratos de geração/revisão, recuperação de limpeza, migração e evidências exigidas estão na [especificação](../../.scratch/jira-windows/spec.md); aprovação não comprova portabilidade já implementada. A resolução e sua origem estão em [Quais fronteiras e evidências tornam a implementação pronta para começar?](../../.scratch/jira-windows/issues/08-architecture-validation.md).

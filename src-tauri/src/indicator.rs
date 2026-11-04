@@ -13,6 +13,24 @@ use crate::strings::STRINGS;
 /// Sizes offered to the host, which chooses the closest match for its bar.
 const ICON_SIZES: [i32; 3] = [22, 32, 44];
 
+pub fn start(app: &AppHandle) {
+    use ksni::TrayMethods;
+    use tauri::Manager;
+    let indicator = Indicator {
+        app: app.clone(),
+        state: Default::default(),
+    };
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        match indicator.spawn().await {
+            Ok(handle) => {
+                app.manage(handle);
+            }
+            Err(_) => eprintln!("indicator: registration failed"),
+        }
+    });
+}
+
 pub struct Indicator {
     pub app: AppHandle,
     pub state: IndicatorState,

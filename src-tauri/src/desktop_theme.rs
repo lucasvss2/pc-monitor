@@ -9,10 +9,13 @@ pub enum SystemTheme {
     Light,
 }
 
+#[cfg(target_os = "linux")]
 pub(crate) const NAMESPACE: &str = "org.freedesktop.appearance";
+#[cfg(target_os = "linux")]
 pub(crate) const KEY: &str = "color-scheme";
 
 /// Portal values: 1 prefers dark; 0 (GNOME's default style) and 2 render light.
+#[cfg(target_os = "linux")]
 pub(crate) fn scheme(value: u32) -> SystemTheme {
     if value == 1 {
         SystemTheme::Dark
@@ -22,6 +25,7 @@ pub(crate) fn scheme(value: u32) -> SystemTheme {
 }
 
 /// Body `(ssv)` of `SettingChanged`; None for any other setting.
+#[cfg(target_os = "linux")]
 pub(crate) fn setting_changed(message: &zbus::Message) -> Option<SystemTheme> {
     let (namespace, key, value): (String, String, zbus::zvariant::OwnedValue) =
         message.body().deserialize().ok()?;
@@ -94,6 +98,7 @@ mod tests {
         assert_eq!(current.get(), Some(SystemTheme::Light));
     }
 
+    #[cfg(target_os = "linux")]
     fn changed(namespace: &str, key: &str, value: u32) -> zbus::Message {
         zbus::Message::signal(
             "/org/freedesktop/portal/desktop",
@@ -106,6 +111,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn portal_color_scheme_maps_to_a_theme_and_follows_changes() {
         let fixture: serde_json::Value =
             serde_json::from_str(include_str!("../fixtures/appearance/portal.json")).unwrap();
@@ -138,6 +144,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn unrelated_settings_are_ignored() {
         assert_eq!(
             setting_changed(&changed("org.freedesktop.appearance", "accent-color", 1)),

@@ -68,6 +68,8 @@ export interface GeneralSettings {
 }
 
 export interface InitialState {
+  /** Capabilities not implemented by the current native adapter. */
+  unavailableModules?: Module[];
   panelVisible?: boolean;
   /** First opening: Settings shows the welcome. */
   welcome?: boolean;

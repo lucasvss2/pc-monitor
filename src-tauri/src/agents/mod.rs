@@ -1,6 +1,7 @@
 //! Local Claude and Codex session polling. Session metadata stays in memory only.
 mod codex;
-mod desktop;
+#[cfg(target_os = "linux")]
+pub(crate) mod desktop;
 pub mod hooks;
 pub mod notifications;
 use crate::ports::{Clock, Processes};
@@ -395,10 +396,10 @@ pub fn start(app: tauri::AppHandle) {
         let mut configuration =
             hooks::Configuration::new(crate::persistence::DiskStorage(home.clone()), executable);
         let mut socket =
-            hooks::socket_path().and_then(|path| crate::ports::UnixHookSocket::bind(&path).ok());
+            hooks::socket_path().and_then(|path| crate::ports::NativeHookSocket::bind(&path).ok());
         let (observations, tracked) = polling(home.join(".codex"));
         let mut monitor = Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock)
-            .with_notifications(desktop::Desktop::new(app.clone()));
+            .with_notifications(crate::platform::agent_notifications(app.clone()));
         monitor.hooks_enabled = configuration.enabled();
         loop {
             for (enabled, reply) in receiver.try_iter() {
@@ -450,10 +451,15 @@ fn polling(
     let tracked = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let worker_tracked = tracked.clone();
     std::thread::spawn(move || {
+        #[cfg(target_os = "linux")]
         let mut poller =
             Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock).with_codex(
                 codex::Adapter::new(root, crate::ports::RootFilesystem::system()),
             );
+        #[cfg(windows)]
+        let mut poller = Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock);
+        #[cfg(windows)]
+        let _ = root;
         loop {
             poller.sessions = worker_tracked.lock().unwrap().clone();
             if let Some(observation) = poller.poll() {
@@ -467,6 +473,7 @@ fn polling(
     (receiver, tracked)
 }
 fn publish(app: &tauri::AppHandle, data: Data) {
+    #[cfg(target_os = "linux")]
     if let Some(handle) =
         tauri::Manager::try_state::<ksni::Handle<crate::indicator::Indicator>>(app)
     {

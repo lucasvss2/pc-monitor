@@ -1,3 +1,4 @@
+#![cfg(target_os = "linux")]
 //! Real subprocess boundary: no Tauri startup, no output, bounded even without EOF.
 use std::io::Write;
 use std::process::{Command, Stdio};

@@ -127,6 +127,7 @@ fn background_failure_keeps_its_outcome_in_closed_history() {
     assert_eq!(data.closed[0].last_state, Some(SessionState::Failed));
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn codex_sessions_share_history_and_keep_provider_identity() {
     let process = Process(Arc::new(Mutex::new(Ok("[]".into()))));
@@ -141,6 +142,7 @@ fn codex_sessions_share_history_and_keep_provider_identity() {
     assert_eq!(json["codexWaitingUnavailable"], true);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn codex_rollout_outcomes_process_exit_and_read_failures_are_reconciled() {
     let source = codex::tests::source();
@@ -186,6 +188,7 @@ fn codex_rollout_outcomes_process_exit_and_read_failures_are_reconciled() {
     assert_eq!(data.sessions.len(), 2);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn codex_closed_history_only_contains_previously_live_sessions() {
     let source = codex::tests::source();
@@ -209,6 +212,7 @@ fn codex_closed_history_only_contains_previously_live_sessions() {
     assert!(restarted.step().unwrap().closed.is_empty());
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn unavailable_codex_rollout_retains_last_reading_and_database_is_read_only() {
     let source = codex::tests::source();
@@ -229,6 +233,7 @@ fn unavailable_codex_rollout_retains_last_reading_and_database_is_read_only() {
     assert_eq!(data.sessions[0].state, SessionState::Working);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn injected_sqlite_and_proc_failures_never_close_a_live_codex_session() {
     use crate::ports::{Files, Space};
@@ -432,6 +437,7 @@ fn three_distinct_sessions_within_ten_seconds_collapse_into_one_group() {
     );
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn notification_switches_apply_to_both_providers_and_codex_interruptions_stay_silent() {
     let source = codex::tests::source();
@@ -505,6 +511,7 @@ fn approval_wait_preserves_the_start_of_the_current_turn() {
     );
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn startup_does_not_announce_a_codex_turn_that_already_finished() {
     let source = codex::tests::source();
@@ -590,6 +597,7 @@ fn hooks_publish_waiting_immediately_and_claude_polling_still_reconciles() {
     assert_eq!(data.closed.len(), 2);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn codex_waiting_survives_polling_until_a_hook_or_rollout_finishes_the_turn() {
     let source = codex::tests::source();
