@@ -1,7 +1,7 @@
 //! Per-user URI association. Never replace a protocol owned by another app.
 use std::path::Path;
 use windows::core::{Error, Result};
-use windows::Win32::Foundation::{E_ACCESSDENIED, E_INVALIDARG, ERROR_FILE_NOT_FOUND};
+use windows::Win32::Foundation::{ERROR_FILE_NOT_FOUND, E_ACCESSDENIED, E_INVALIDARG};
 const KEY: &str = r"Software\Classes\kvojps-monitor";
 const OWNER: &str = "dev.kvojps.monitor";
 
