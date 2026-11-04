@@ -292,6 +292,24 @@ impl Persistence for Volatile {
 mod tests {
     use super::*;
     #[test]
+    fn jira_readings_are_rejected_before_any_cache_file_is_written() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = Cache(DiskStorage(dir.path().into()));
+        // Even a shape compatible with the legacy cache cannot bypass the provider guard.
+        let mut data: Value =
+            serde_json::from_str(include_str!("../../src/lib/trello/fixtures/full.json")).unwrap();
+        data["provider"] = json!("jira");
+        data["issues"] = json!([{"title":"PRIVATE_ISSUE_CONTENT"}]);
+        assert!(cache
+            .save(&Snapshot {
+                module: Module::Tasks,
+                updated_at: Some(1000),
+                data
+            })
+            .is_err());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+    #[test]
     fn disk_cache_restores_counts_but_never_credentials_or_commit_content() {
         let dir = tempfile::tempdir().unwrap();
         let cache = Cache(DiskStorage(dir.path().into()));

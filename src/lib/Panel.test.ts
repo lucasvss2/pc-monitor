@@ -50,10 +50,11 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-function fakeCore(initial: { lastAnchor?: Module; snapshots?: Snapshot[]; agentTarget?: string; unavailableModules?: Module[] } = {}) {
+function fakeCore(initial: { runtimeId?: string; lastAnchor?: Module; snapshots?: Snapshot[]; agentTarget?: string; unavailableModules?: Module[] } = {}) {
   let listener: ((s: Snapshot) => void) | undefined;
   const core = {
     initialState: vi.fn(async (): Promise<InitialState> => ({
+      runtimeId: initial.runtimeId,
       unavailableModules: initial.unavailableModules,
       lastAnchor: initial.lastAnchor ?? "ai",
       agentTarget: initial.agentTarget ?? null,
@@ -877,7 +878,7 @@ it("opens a module-only notification at Agents even when first-use welcome is pe
 
 it("accepts a newer revision clearing the previous context even with a null reading time", async () => {
   const initial = { module: "tasks" as const, updatedAt: 10, data: trelloFull, revision: 1, runtimeId: "test-runtime", contextGeneration: 1 };
-  const { core, publish } = fakeCore({ snapshots: [initial] });
+  const { core, publish } = fakeCore({ runtimeId: "test-runtime", snapshots: [initial] });
   render(Panel, { core });
   expect(await screen.findByText("17 cards · 8 listas")).toBeInTheDocument();
   const cleared = { module: "tasks" as const, updatedAt: null, revision: 2, runtimeId: "test-runtime", contextGeneration: 2,
@@ -885,4 +886,33 @@ it("accepts a newer revision clearing the previous context even with a null read
   await publish(cleared);
   expect(screen.queryByText("17 cards · 8 listas")).not.toBeInTheDocument();
   expect(within(section("Tarefas")).getByRole("button", { name: "Configurar Tarefas" })).toBeInTheDocument();
+});
+
+it("orders readings by revision when wall time moves back and ignores other runtimes", async () => {
+  const initial: Snapshot = { module: "tasks", updatedAt: 1000, data: trelloFull, revision: 3, runtimeId: "current" };
+  const { core, publish } = fakeCore({ runtimeId: "current", snapshots: [initial] });
+  render(Panel, { core });
+  await screen.findByText("17 cards · 8 listas");
+  const changed = { ...trelloFull, lists: [] };
+  await publish({ ...initial, updatedAt: 1, revision: 4, data: changed });
+  expect(screen.queryByText("17 cards · 8 listas")).not.toBeInTheDocument();
+  await publish({ ...initial, updatedAt: 9999, revision: 3 });
+  await publish({ ...initial, runtimeId: "previous", revision: 999 });
+  expect(screen.queryByText("17 cards · 8 listas")).not.toBeInTheDocument();
+  await publish({ ...initial, updatedAt: 2, revision: 5 });
+  expect(screen.getByText("17 cards · 8 listas")).toBeInTheDocument();
+});
+
+it("keeps events received during bootstrap ahead of the initial snapshot", async () => {
+  const initial: Snapshot = { module: "tasks", updatedAt: 1000, data: trelloFull, revision: 1, runtimeId: "current" };
+  const { core, publish } = fakeCore();
+  let finish!: (state: InitialState) => void;
+  core.initialState.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  render(Panel, { core });
+  await publish({ ...initial, updatedAt: null, revision: 2, contextGeneration: 2,
+    data: { state: "cleanupPending", provider: "trello", contextGeneration: 2, canWrite: false, boards: [], lists: null } });
+  await publish({ ...initial, runtimeId: "previous", revision: 999 });
+  await act(() => finish({ runtimeId: "current", lastAnchor: "tasks", snapshots: [initial], panelVisible: true, agentTarget: null }));
+  expect(screen.queryByText("17 cards · 8 listas")).not.toBeInTheDocument();
+  expect(within(section("Tarefas")).getByText(/limpeza/i)).toBeInTheDocument();
 });

@@ -568,3 +568,130 @@ fn future_task_schema_is_preserved_and_does_not_collect_or_change_credentials() 
         env.trello.0.lock().unwrap().is_empty() && env.jira.requests.lock().unwrap().is_empty()
     );
 }
+
+#[test]
+fn provider_switch_waits_for_the_in_flight_write_without_replaying_it() {
+    use std::sync::mpsc;
+    use std::time::Duration;
+    struct NoProcesses;
+    impl crate::ports::Processes for NoProcesses {
+        fn execute(&self, _: &str, _: &[&str]) -> Result<String, ()> {
+            panic!("this scenario must not launch a process")
+        }
+    }
+    let env = Environment::seeded();
+    let mut tasks = env.jira_tasks();
+    let expected = generation(&tasks);
+    let transition = tasks
+        .transitions(expected, "20000")
+        .unwrap()
+        .into_iter()
+        .find(|t| !t.requires_fields)
+        .unwrap()
+        .id;
+    let (entered, started) = mpsc::channel();
+    let (release, gate) = mpsc::channel();
+    *env.jira.write_gate.lock().unwrap() = Some((entered, gate));
+    *env.jira.write_failure.lock().unwrap() = Some(HttpError::default());
+    let (mailbox, commands) = mpsc::channel();
+    let worker = std::thread::spawn(move || {
+        for command in commands.iter().take(2) {
+            worker::dispatch(&mut tasks, command, &mut |_| {}, &NoProcesses);
+        }
+        tasks.snapshot()
+    });
+    let (write_reply, mut write_result) = tokio::sync::oneshot::channel();
+    mailbox
+        .send(worker::Command::Perform(
+            expected,
+            Action::Transition {
+                item: "20000".into(),
+                transition,
+            },
+            write_reply,
+        ))
+        .unwrap();
+    started.recv_timeout(Duration::from_secs(3)).unwrap();
+    let (switch_reply, mut switch_result) = tokio::sync::oneshot::channel();
+    mailbox
+        .send(worker::Command::Switch(
+            expected,
+            Provider::Trello,
+            switch_reply,
+        ))
+        .unwrap();
+    assert_eq!(
+        write_result.try_recv(),
+        Err(tokio::sync::oneshot::error::TryRecvError::Empty)
+    );
+    assert_eq!(
+        switch_result.try_recv(),
+        Err(tokio::sync::oneshot::error::TryRecvError::Empty)
+    );
+    release.send(()).unwrap();
+    let snapshot = worker.join().unwrap();
+    assert_eq!(write_result.try_recv().unwrap(), Err(Error::Unconfirmed));
+    assert_eq!(switch_result.try_recv().unwrap(), Ok(()));
+    assert_eq!(snapshot.data["provider"], "trello");
+    assert_eq!(snapshot.data["canWrite"], false);
+    assert_eq!(
+        env.jira
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|p| p.starts_with("POST"))
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn disconnect_recovers_when_the_vault_was_deleted_before_its_checkpoint_failed() {
+    let env = Environment::seeded();
+    let mut tasks = env.jira_tasks();
+    *env.settings.fail_rename_at.lock().unwrap() =
+        Some(*env.settings.rename_calls.lock().unwrap() + 3);
+    assert_eq!(
+        tasks.disconnect(generation(&tasks), &mut |_| {}),
+        Err(Error::CleanupFailed)
+    );
+    assert!(env.vault.read("jira").unwrap().is_none());
+    assert_eq!(tasks.snapshot().data["state"], "cleanupPending");
+    let mut restarted = env.tasks();
+    restarted.poll(true, false, &mut |_| {});
+    assert_eq!(restarted.snapshot().data["state"], "missingCredential");
+    assert!(env.vault.read("trello").unwrap().is_some());
+}
+
+#[test]
+fn explicit_reconnection_replaces_invalid_vault_data_only_after_validation() {
+    let env = Environment::seeded();
+    let mut tasks = env.jira_tasks();
+    env.vault.save("jira", "invalid legacy credential").unwrap();
+    let connection = || Connection::Jira {
+        site: "https://example.atlassian.net".into(),
+        email: "person@example.com".into(),
+        token: "PRIVATE_NEW_TOKEN".into(),
+    };
+    *env.jira.read_failure.lock().unwrap() = Some(HttpError::response(401, None));
+    assert_eq!(
+        tasks.connect(generation(&tasks), connection(), &mut |_| {}),
+        Err(Error::InvalidCredential)
+    );
+    assert_eq!(
+        env.vault.read("jira").unwrap().as_deref(),
+        Some("invalid legacy credential")
+    );
+    *env.jira.read_failure.lock().unwrap() = None;
+    assert!(tasks
+        .connect(generation(&tasks), connection(), &mut |_| {})
+        .is_ok());
+    assert!(env
+        .vault
+        .read("jira")
+        .unwrap()
+        .unwrap()
+        .contains("PRIVATE_NEW_TOKEN"));
+    assert_eq!(tasks.snapshot().data["canWrite"], false);
+}

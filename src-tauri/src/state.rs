@@ -145,7 +145,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Load preferences; missing or unreadable files count as first run.
+    /// Load preferences; preserve unreadable or newer files without overwriting them.
     pub fn load(dir_config: PathBuf) -> Self {
         Self::with_storage(DiskStorage(dir_config))
     }
@@ -400,11 +400,72 @@ mod tests {
     }
 
     #[test]
-    fn unreadable_preferences_count_as_first_run() {
+    fn unreadable_preferences_are_preserved_and_reported_without_startup_changes() {
         let d = dir();
         fs::write(d.path().join(PREFERENCES_FILE), "{ invalid json").unwrap();
+        let mut state = AppState::load(d.path().into());
+        assert_eq!(state.last_anchor(), Module::Ai);
+        assert_eq!(state.preferences_error(), Some("unreadable"));
+        assert!(!state.first_execution());
+        assert!(!state.welcome_pending());
+        assert!(state.set_version_check(false).is_err());
+        state.choose_anchor(Module::Tasks);
+        assert_eq!(
+            fs::read_to_string(d.path().join(PREFERENCES_FILE)).unwrap(),
+            "{ invalid json"
+        );
+    }
 
-        assert_eq!(AppState::load(d.path().into()).last_anchor(), Module::Ai);
+    #[test]
+    fn future_preferences_remain_byte_identical_when_a_setting_is_requested() {
+        let d = dir();
+        let original = r#"{"schemaVersion":999,"lastAnchor":"trello","initialized":true,"futureChoice":"keep"}"#;
+        fs::write(d.path().join(PREFERENCES_FILE), original).unwrap();
+        let mut state = AppState::load(d.path().into());
+        assert_eq!(state.last_anchor(), Module::Tasks);
+        assert_eq!(state.preferences_error(), Some("futureSchema"));
+        assert!(state.set_version_check(false).is_err());
+        assert_eq!(
+            fs::read_to_string(d.path().join(PREFERENCES_FILE)).unwrap(),
+            original
+        );
+    }
+
+    #[test]
+    fn failed_atomic_migration_keeps_the_original_file_and_valid_choices() {
+        struct RenameDenied(DiskStorage);
+        impl Storage for RenameDenied {
+            fn read(&self, p: &str) -> std::io::Result<String> {
+                self.0.read(p)
+            }
+            fn write(&self, p: &str, data: &str) -> std::io::Result<()> {
+                self.0.write(p, data)
+            }
+            fn rename(&self, _: &str, _: &str) -> std::io::Result<()> {
+                Err(std::io::ErrorKind::PermissionDenied.into())
+            }
+            fn remove(&self, p: &str) -> std::io::Result<()> {
+                self.0.remove(p)
+            }
+        }
+        let d = dir();
+        let original = r#"{"lastAnchor":"trello","initialized":true,"welcomed":true,"appearance":{"theme":"dark","reduceMotion":true}}"#;
+        fs::write(d.path().join(PREFERENCES_FILE), original).unwrap();
+        let mut state = AppState::with_storage(RenameDenied(DiskStorage(d.path().into())));
+        assert_eq!(state.last_anchor(), Module::Tasks);
+        assert_eq!(state.preferences_error(), Some("migrationFailed"));
+        assert_eq!(
+            state.appearance(),
+            Appearance {
+                theme: Theme::Dark,
+                reduce_motion: true
+            }
+        );
+        assert!(state.set_version_check(false).is_err());
+        assert_eq!(
+            fs::read_to_string(d.path().join(PREFERENCES_FILE)).unwrap(),
+            original
+        );
     }
 
     #[test]
@@ -753,6 +814,7 @@ mod settings_tests {
                 "appearance",
                 "initialized",
                 "lastAnchor",
+                "schemaVersion",
                 "versionCheck",
                 "welcomed"
             ]

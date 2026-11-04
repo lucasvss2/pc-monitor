@@ -540,8 +540,11 @@ impl<A: JiraApi, R: Clock> Source for Jira<A, R> {
         }
         c.login = me["displayName"].as_str().unwrap_or("Conta Jira").into();
         let boards = self.boards(&c)?;
-        c.board = self
-            .credential()?
+        let previous = match self.credential() {
+            Err(Error::InvalidCredential | Error::InvalidSite) => None,
+            result => result?,
+        };
+        c.board = previous
             .filter(|old| old.account == c.account && old.site == c.site)
             .and_then(|old| old.board)
             .filter(|id| boards.iter().any(|b| b["id"] == *id));
@@ -604,6 +607,7 @@ impl<A: JiraApi, R: Clock> Source for Jira<A, R> {
             .as_array()
             .ok_or(Error::Refused)?
             .iter()
+            .filter(|t| t["isAvailable"] != false)
             .map(|t| {
                 Ok(Transition {
                     id: t["id"]
@@ -615,7 +619,9 @@ impl<A: JiraApi, R: Clock> Source for Jira<A, R> {
                     status: t["to"]["name"].as_str().ok_or(Error::Refused)?.into(),
                     requires_fields: t["fields"]
                         .as_object()
-                        .is_some_and(|fields| fields.values().any(|f| f["required"] == true)),
+                        .map_or(t["hasScreen"] == true, |fields| {
+                            fields.values().any(|f| f["required"] == true)
+                        }),
                 })
             })
             .collect()
