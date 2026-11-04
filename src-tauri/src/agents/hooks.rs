@@ -110,7 +110,10 @@ impl<S: Storage> Configuration<S> {
                     .ok_or_else(invalid)?;
                 let mut entries = vec![];
                 for event in *events {
-                    let entry = json!({"hooks":[{"type":"command","command":hook_command(&self.executable, provider, event),"timeout":1}]});
+                    // Windows also starts PowerShell; allow bounded cold startup.
+                    // The hook binary still reads stdin for at most 100 ms.
+                    let timeout = if cfg!(windows) { 3 } else { 1 };
+                    let entry = json!({"hooks":[{"type":"command","command":hook_command(&self.executable, provider, event),"timeout":timeout}]});
                     let missing = !hooks.contains_key(*event);
                     let list = hooks
                         .entry(*event)

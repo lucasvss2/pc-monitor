@@ -64,7 +64,7 @@ fn windows_hook_command_preserves_stdin_and_special_paths_without_content_leaks(
     child.stdin.take().unwrap().write_all(br#"{"session_id":"synthetic-session","cwd":"C:/Example","prompt":"PRIVATE_PROMPT","tool_input":"PRIVATE_TOOL"}"#).unwrap();
     let started = Instant::now();
     while child.try_wait().unwrap().is_none() {
-        if started.elapsed() > Duration::from_secs(5) {
+        if started.elapsed() > Duration::from_secs(3) {
             let _ = child.kill();
             panic!("hook deadline exceeded");
         }
