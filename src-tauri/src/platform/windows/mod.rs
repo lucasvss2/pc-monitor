@@ -2,6 +2,7 @@
 mod credentials;
 mod hooks;
 mod notifications;
+mod session;
 mod startup;
 pub use credentials::NativeKeyring;
 pub use hooks::endpoint as hook_endpoint;
@@ -118,12 +119,4 @@ pub fn connectivity() -> WindowsConnectivity {
     WindowsConnectivity
 }
 
-pub struct WindowsSession;
-impl crate::lifecycle::Session for WindowsSession {
-    fn preparing_for_sleep(&self) -> Option<bool> {
-        None
-    }
-}
-pub fn session() -> WindowsSession {
-    WindowsSession
-}
+pub use session::session;

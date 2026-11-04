@@ -127,26 +127,6 @@ impl Watch for FileWatch {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn file_watch_sees_a_replaced_file_once_and_ignores_its_neighbours() {
-        let dir = tempfile::tempdir().unwrap();
-        let file = dir.path().join("cache/claude-statusline.json");
-        let mut watch = FileWatch::new(&file);
-        assert!(!watch.changed());
-        std::fs::write(dir.path().join("cache/other.json"), "{}").unwrap();
-        assert!(!watch.changed());
-        let temporary = dir.path().join("cache/claude-statusline.json.tmp");
-        std::fs::write(&temporary, "{}").unwrap();
-        std::fs::rename(&temporary, &file).unwrap();
-        assert!(watch.changed());
-        assert!(!watch.changed());
-    }
-}
-
 pub struct UnixHookSocket(std::os::unix::net::UnixDatagram);
 impl UnixHookSocket {
     pub fn sender(path: &std::path::Path) -> io::Result<Self> {
@@ -254,4 +234,24 @@ pub fn space(path: &std::path::Path) -> io::Result<Space> {
         free: s.f_bfree * s.f_frsize,
         available: s.f_bavail * s.f_frsize,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_watch_sees_a_replaced_file_once_and_ignores_its_neighbours() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("cache/claude-statusline.json");
+        let mut watch = FileWatch::new(&file);
+        assert!(!watch.changed());
+        std::fs::write(dir.path().join("cache/other.json"), "{}").unwrap();
+        assert!(!watch.changed());
+        let temporary = dir.path().join("cache/claude-statusline.json.tmp");
+        std::fs::write(&temporary, "{}").unwrap();
+        std::fs::rename(&temporary, &file).unwrap();
+        assert!(watch.changed());
+        assert!(!watch.changed());
+    }
 }

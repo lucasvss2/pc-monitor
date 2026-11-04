@@ -4,16 +4,25 @@ pub(crate) mod battery;
 mod readings;
 
 use std::collections::VecDeque;
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::mpsc::Sender;
+#[cfg(target_os = "linux")]
+use std::sync::mpsc::{self, RecvTimeoutError};
+#[cfg(target_os = "linux")]
 use std::thread;
+#[cfg(target_os = "linux")]
 use std::time::Duration;
 
 use serde::Serialize;
+#[cfg(target_os = "linux")]
 use tauri::AppHandle;
 
 use crate::module::Module;
-use crate::ports::{Clock, Files, RootFilesystem, SystemClock};
-use crate::snapshot::{self, Snapshot};
+use crate::ports::{Clock, Files};
+#[cfg(target_os = "linux")]
+use crate::ports::{RootFilesystem, SystemClock};
+#[cfg(target_os = "linux")]
+use crate::snapshot;
+use crate::snapshot::Snapshot;
 use battery::Battery;
 #[cfg(test)]
 use battery::BatteryState;

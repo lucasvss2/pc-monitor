@@ -136,6 +136,9 @@ fn payload(title: &str, body: &str) -> String {
     )
 }
 impl Sink for Desktop {
+    fn available(&self) -> bool {
+        self.notifier.is_some()
+    }
     fn show(&mut self, replaces: u32, title: &str, body: &str, _: &str) -> u32 {
         let Some(notifier) = &self.notifier else {
             return 0;

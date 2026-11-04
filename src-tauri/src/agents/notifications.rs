@@ -20,11 +20,17 @@ impl Default for Preferences {
     }
 }
 pub trait Sink: Send {
+    fn available(&self) -> bool {
+        true
+    }
     fn show(&mut self, replaces: u32, title: &str, body: &str, session: &str) -> u32;
     fn close(&mut self, id: u32);
 }
 struct Silent;
 impl Sink for Silent {
+    fn available(&self) -> bool {
+        false
+    }
     fn show(&mut self, _: u32, _: &str, _: &str, _: &str) -> u32 {
         0
     }
@@ -51,6 +57,9 @@ impl Default for Policy {
     }
 }
 impl Policy {
+    pub fn available(&self) -> bool {
+        self.sink.available()
+    }
     pub fn new(sink: impl Sink + 'static) -> Self {
         Self {
             sink: Box::new(sink),

@@ -2262,6 +2262,7 @@ dependencies = [
  "tokio",
  "webkit2gtk",
  "windows",
+ "windows-core",
  "windows-registry",
  "zbus 5.19.0",
 ]

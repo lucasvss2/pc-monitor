@@ -7,7 +7,7 @@ use windows::{
         Foundation::*,
         Security::{Authorization::*, *},
         Storage::FileSystem::*,
-        System::{Memory::LocalFree, Pipes::*, Threading::*},
+        System::{Pipes::*, Threading::*},
     },
 };
 
@@ -73,8 +73,11 @@ impl NativeHookSocket {
         }
         .map_err(|_| failure())?;
         // A busy or absent monitor fails immediately; never wait for a server.
+        let handle = Handle(handle);
+        unsafe { SetNamedPipeHandleState(handle.0, Some(&PIPE_NOWAIT), None, None) }
+            .map_err(|_| failure())?;
         Ok(Self {
-            handle: Handle(handle),
+            handle,
             server: false,
         })
     }

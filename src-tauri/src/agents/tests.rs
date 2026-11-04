@@ -344,10 +344,7 @@ fn waiting_notification_uses_only_session_metadata_and_replaces_previous() {
     let calls = notifications.0.lock().unwrap().clone();
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].session, "11111111-1111-4111-8111-111111111111");
-    assert_eq!(
-        calls[0].title,
-        "Claude Code · example-project · example-session"
-    );
+    assert_eq!(calls[0].title, "Claude Code");
     assert_eq!(calls[0].body, "Aguardando sua resposta");
     let mut rows: serde_json::Value =
         serde_json::from_str(include_str!("../../fixtures/agents/recorded.json")).unwrap();
@@ -713,4 +710,24 @@ fn hook_content_never_reaches_notifications_or_the_published_snapshot() {
     assert_eq!(calls[0].session, "codex:hook-codex");
     let published = serde_json::to_string(&data).unwrap();
     assert!(!format!("{calls:?}{published}").contains("PRIVATE_"));
+}
+
+#[test]
+fn notifications_never_include_project_or_session_names() {
+    let process = Process(Arc::new(Mutex::new(Ok("[]".into()))));
+    let clock = FakeClock::at(1800000000000);
+    let notifications = Notifications::default();
+    let mut monitor =
+        Monitor::new(process.clone(), clock.clone()).with_notifications(notifications.clone());
+    monitor.step();
+    *process.0.lock().unwrap() = Ok(serde_json::json!([{
+        "pid":123,"sessionId":"synthetic-session","cwd":"/PRIVATE_PROJECT",
+        "name":"PRIVATE_SESSION_NAME","startedAt":1000,"status":"waiting"
+    }])
+    .to_string());
+    clock.advance(2000);
+    monitor.step();
+    let calls = notifications.0.lock().unwrap();
+    assert_eq!(calls.len(), 1);
+    assert!(!calls[0].title.contains("PRIVATE_") && !calls[0].body.contains("PRIVATE_"));
 }

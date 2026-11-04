@@ -56,6 +56,9 @@
     onchange={(enabled) => void changeHooks(enabled)} />
   <fieldset>
     <legend>{t.agentNotifications.groupTitle}</legend>
+    {#if data?.notificationsAvailable === false}
+      <p role="status">Notificações nativas indisponíveis nesta sessão.</p>
+    {/if}
     {#each switches as item (item.key)}
       <Switch label={item.label} checked={preferences[item.key]} onchange={(enabled) => change(item.key, enabled)} />
     {/each}

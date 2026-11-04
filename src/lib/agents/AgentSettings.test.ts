@@ -58,3 +58,10 @@ it("shows the configuration failure right below the instant detection switch", a
   await userEvent.click(toggle);
   await waitFor(() => expect(toggle).toHaveAccessibleDescription(/Não foi possível alterar os hooks/));
 });
+
+it("explains unavailable native notification delivery without changing saved preferences", () => {
+  const save = vi.fn();
+  render(AgentSettings, { data: { ...empty, notificationsAvailable: false }, save });
+  expect(screen.getByText("Notificações nativas indisponíveis nesta sessão.")).toBeVisible();
+  expect(save).not.toHaveBeenCalled();
+});

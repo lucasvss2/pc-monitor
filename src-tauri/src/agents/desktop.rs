@@ -72,6 +72,9 @@ fn proxy(bus: &zbus::blocking::Connection) -> zbus::Result<zbus::blocking::Proxy
     )
 }
 impl Sink for Desktop {
+    fn available(&self) -> bool {
+        self.bus.is_some()
+    }
     fn show(&mut self, replaces: u32, title: &str, body: &str, session: &str) -> u32 {
         let Some(bus) = &self.bus else {
             return 0;

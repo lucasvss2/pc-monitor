@@ -49,6 +49,7 @@ pub struct Data {
     sessions: Vec<Session>,
     closed: Vec<Session>,
     notification_preferences: notifications::Preferences,
+    notifications_available: bool,
     accent_dot: bool,
     failed: bool,
     observed_at: u64,
@@ -360,6 +361,7 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
         self.sessions
             .sort_by_key(|s| (s.state != SessionState::Waiting, s.started_at, s.id.clone()));
         Data {
+            notifications_available: self.notifications.available(),
             notification_preferences: self.notifications.preferences,
             accent_dot: self
                 .sessions

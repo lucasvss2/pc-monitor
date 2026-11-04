@@ -20,7 +20,9 @@ pub trait NetworkManager: Send {
 
 #[cfg(target_os = "linux")]
 pub use network_manager::NetworkManagerDbus;
-pub use probe::{PingSocket, Probe};
+#[cfg(target_os = "linux")]
+pub use probe::PingSocket;
+pub use probe::Probe;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::net::{IpAddr, SocketAddr, SocketAddrV6};
