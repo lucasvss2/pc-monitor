@@ -35,3 +35,5 @@ EXE local antigo e artefato remoto da versão 5269be6 removidos depois da valida
 ## Resultado
 
 Recorte solicitado de conexão Jira, leitura e troca Jira → Trello → Jira concluído por confirmação assistida, na versão 5b4034d. A fonte Trello foi verificada no estado sem conexão; não se declara leitura real dos dois serviços nem aceite integral da especificação. Permanência ao perder foco e fechamento por X/Escape foram confirmados. O pedido adicional de arraste prossegue no ticket 05, reutilizando a conexão salva e preservando as limitações acima.
+
+Continuação no ticket 05: na versão c53247a, após encerrar e substituir o processo anterior, o usuário confirmou Jira conectado sem pedir token. A persistência da conexão após reinício deixa de ser pendência desta rodada Windows; transições reais, conta Trello conectada e aceite Ubuntu permanecem pendentes. O usuário também confirmou arraste e botões do cabeçalho após o movimento.

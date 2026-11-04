@@ -1,6 +1,6 @@
 # Reposicionar a janela pelo cabeçalho
 
-Status: claimed
+Status: resolved
 Assignee: Codex / usuário
 Parent: ../spec.md
 
@@ -21,3 +21,13 @@ Fonte primária consultada em 04/11/2026: [customização de janela Tauri v2](ht
 Código c53247a, CI 41923314348. Localmente, Svelte sem erros/avisos, build UI e 58 testes de interação do Painel passaram. O runner Windows passou todas as etapas, com 391 testes UI, 269 unitários Rust, cofre separado, integrações/fixtures e build de produção. Executável experimental conferido: SHA-256 c87f7c5a6ab74d6fc4a88fb741ca4699af557076e21b34ab1aa19ce36ac1280c, sem assinatura. O arraste real não é declarado aprovado pela presença do atributo nem pelo cursor; aguarda a janela nativa e a confirmação assistida do usuário.
 
 A CI terminou com sucesso também no Ubuntu, incluindo o build de produção. O arquivo novo está em pasta temporária própria, separado da versão 5b4034d ainda em uso. Solicitado ao usuário encerrar a versão anterior e autorizar a abertura do EXE conferido, conforme a confirmação imediata exigida pela skill computer-use. Não iniciar segunda versão por cima da instância antiga; conferir o caminho do processo antes do aceite e remover o EXE obsoleto após a substituição. A conexão Jira deve reaparecer sem pedir token após esse reinício, e o teste de arraste deve conferir também os botões do cabeçalho.
+
+O usuário confirmou encerramento e autorizou a abertura de c53247a. Hash conferido novamente e ausência de instância antiga verificada antes da execução; depois, uma única instância do caminho esperado foi confirmada. A automação novamente não expôs janela alvo, portanto o teste segue assistido. Cópia local obsoleta de 5b4034d removida após conferir hash, ausência de processo usando-a e limites da pasta temporária. Nenhuma chave do Registro foi excluída; associações usadas pela versão atual são preservadas.
+
+O usuário confirmou na janela nativa que o arraste moveu a janela e que o Jira voltou conectado sem pedir token. Isso também confirma leitura da conexão salva após encerrar um processo e iniciar a versão seguinte. Teste dos botões Configurações/X após o arraste ainda em confirmação. A posição não foi gravada como preferência, conforme o recorte deste ajuste.
+
+## Resultado
+
+Aceite assistido concluído no Windows 11: arraste move a janela; Jira reaparece conectado após substituição/reinício do processo; Configurações, X e reabertura pelo Indicador funcionam depois do movimento. Confirmações fornecidas pelo usuário, sem automação de autenticação ou capturas novas. CI Ubuntu/Windows aprovada, sem alteração de proteções. Cópia local e artefato remoto obsoletos de 5b4034d removidos; apenas a versão c53247a continua em uso. Metadados de seleção continuam sem conta/quadro/conteúdo, sem limpeza pendente e sem cache Jira em disco. As associações do aplicativo em uso foram preservadas; não houve nova tentativa de exclusão do Registro.
+
+Limites: o movimento atual foi verificado; memória de posição/geometrias e aceite gráfico Ubuntu continuam nas etapas aprovadas. Nenhuma transição remota em itens foi solicitada nesta rodada.
