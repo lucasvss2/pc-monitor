@@ -12,7 +12,8 @@ pub enum Module {
     #[serde(alias = "agentes")]
     Agents,
     Github,
-    Trello,
+    #[serde(alias = "trello")]
+    Tasks,
     #[serde(alias = "rede")]
     Network,
     #[serde(alias = "sistema")]
@@ -26,7 +27,7 @@ impl Module {
             Module::Ai => "ai",
             Module::Agents => "agents",
             Module::Github => "github",
-            Module::Trello => "trello",
+            Module::Tasks => "tasks",
             Module::Network => "network",
             Module::System => "system",
         }

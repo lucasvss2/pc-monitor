@@ -261,6 +261,19 @@ mod tests {
     }
 
     #[test]
+    fn invalid_theme_preserves_legacy_anchor_and_other_valid_preferences() {
+        let d = dir();
+        fs::write(d.path().join(PREFERENCES_FILE), r#"{"lastAnchor":"trello","initialized":true,"welcomed":true,"appearance":{"theme":"invalid","reduceMotion":true},"versionCheck":{"enabled":false}}"#).unwrap();
+        let state = AppState::load(d.path().into());
+        assert_eq!(state.last_anchor(), Module::Tasks);
+        assert!(state.appearance().reduce_motion);
+        assert_eq!(state.appearance().theme, Theme::System);
+        assert!(!state.welcome_pending());
+        assert!(!state.first_execution());
+        assert!(!state.version_check());
+    }
+
+    #[test]
     fn first_run_opens_ai_module() {
         let d = dir();
         assert_eq!(AppState::load(d.path().into()).last_anchor(), Module::Ai);
@@ -330,14 +343,11 @@ mod tests {
     fn visibility_does_not_change_the_last_anchor() {
         let d = dir();
         let mut state = AppState::load(d.path().into());
-        state.choose_anchor(Module::Trello);
+        state.choose_anchor(Module::Tasks);
         state.open_panel();
         state.report_visible(&[Module::Ai, Module::Network]);
 
-        assert_eq!(
-            AppState::load(d.path().into()).last_anchor(),
-            Module::Trello
-        );
+        assert_eq!(AppState::load(d.path().into()).last_anchor(), Module::Tasks);
     }
 
     #[test]
@@ -348,7 +358,7 @@ mod tests {
         state.open_panel();
         assert_eq!(state.visible_modules(), vec![Module::System]);
 
-        state.report_visible(&[Module::Trello, Module::Github]);
+        state.report_visible(&[Module::Tasks, Module::Github]);
         state.close_panel();
         assert!(state.visible_modules().is_empty());
 

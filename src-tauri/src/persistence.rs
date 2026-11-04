@@ -111,8 +111,18 @@ impl<S: Storage> Cache<S> {
         self.0.rename(&format!("{path}.tmp"), &path)
     }
     pub fn load(&self, module: Module) -> Option<Snapshot> {
-        let body: Value =
-            serde_json::from_str(&self.0.read(&format!("{}.json", module.id())).ok()?).ok()?;
+        let text = self
+            .0
+            .read(&format!("{}.json", module.id()))
+            .or_else(|error| {
+                if module == Module::Tasks && error.kind() == io::ErrorKind::NotFound {
+                    self.0.read("trello.json")
+                } else {
+                    Err(error)
+                }
+            })
+            .ok()?;
+        let body: Value = serde_json::from_str(&text).ok()?;
         let mut data = sanitize(module, &body["data"]).ok()?;
         if module == Module::Github {
             data["state"] = json!("stale");
@@ -122,7 +132,7 @@ impl<S: Storage> Cache<S> {
                 data["featured"]["title"] = json!("");
             }
         }
-        if module == Module::Trello {
+        if module == Module::Tasks {
             data["state"] = json!("stale");
             data["refreshing"] = json!(false);
             data["account"] = Value::Null;
@@ -147,7 +157,7 @@ fn sanitize(module: Module, data: &Value) -> io::Result<Value> {
                 serde_json::from_value(data.clone()).map_err(io::Error::other)?;
             serde_json::to_value(clean).map_err(io::Error::other)
         }
-        Module::Trello => {
+        Module::Tasks => {
             let clean: CachedTrello =
                 serde_json::from_value(data.clone()).map_err(io::Error::other)?;
             serde_json::to_value(clean).map_err(io::Error::other)

@@ -42,7 +42,7 @@ const B: [(Module, &str); 6] = [
     (Module::Ai, "claude-usage"),
     (Module::Agents, "states"),
     (Module::Github, "full"),
-    (Module::Trello, "full"),
+    (Module::Tasks, "full"),
     (Module::Network, "full"),
     (Module::System, "notebook"),
 ];
@@ -75,7 +75,11 @@ fn fixtures_root() -> PathBuf {
 /// only the module data are wrapped, updated at the fixed clock.
 fn load(root: &Path, module: Module, name: &str) -> Result<Snapshot, String> {
     let path = root
-        .join(module.id())
+        .join(if module == Module::Tasks {
+            "trello"
+        } else {
+            module.id()
+        })
         .join("fixtures")
         .join(format!("{name}.json"));
     let text = std::fs::read_to_string(&path)
@@ -124,7 +128,7 @@ impl Fixtures {
     /// Move a card to the bottom of another list of the shown board, like Trello.
     pub fn move_card(&mut self, card: &str, list: &str) -> Result<(), crate::trello::MoveError> {
         use crate::trello::MoveError;
-        let lists = self.data(Module::Trello)["lists"]
+        let lists = self.data(Module::Tasks)["lists"]
             .as_array_mut()
             .ok_or(MoveError)?;
         let to = lists
@@ -253,7 +257,7 @@ pub fn start(app: &AppHandle) {
             match command {
                 Command::Refresh => {}
                 Command::Connect(_, _, reply) => {
-                    let _ = reply.send(Ok(f.login(Module::Trello)));
+                    let _ = reply.send(Ok(f.login(Module::Tasks)));
                 }
                 Command::SelectBoard(_, reply)
                 | Command::Disconnect(reply)
@@ -264,7 +268,7 @@ pub fn start(app: &AppHandle) {
                     let _ = reply.send(f.move_card(&card, &list));
                 }
             }
-            Some(Module::Trello)
+            Some(Module::Tasks)
         },
     )));
     app.manage(crate::agents::Collector(serve(
@@ -345,7 +349,7 @@ mod tests {
     }
 
     fn counts(fixtures: &Fixtures) -> Vec<usize> {
-        fixtures.get(Module::Trello).data["lists"]
+        fixtures.get(Module::Tasks).data["lists"]
             .as_array()
             .unwrap()
             .iter()
@@ -362,7 +366,7 @@ mod tests {
         fixtures.move_card(card, second).unwrap();
         let after = counts(&fixtures);
         assert_eq!((after[0], after[1]), (before[0] - 1, before[1] + 1));
-        let lists = &fixtures.get(Module::Trello).data["lists"];
+        let lists = &fixtures.get(Module::Tasks).data["lists"];
         assert_eq!(
             lists[1]["cards"].as_array().unwrap().last().unwrap()["id"],
             card
@@ -384,7 +388,7 @@ mod tests {
         fixtures.claude_switch("statusLine", true);
         assert_eq!(fixtures.get(Module::Ai).data["claude"]["statusLine"], "on");
         assert_eq!(fixtures.login(Module::Github), "exemplo");
-        assert_eq!(fixtures.login(Module::Trello), "exemplo");
+        assert_eq!(fixtures.login(Module::Tasks), "exemplo");
     }
 
     #[test]

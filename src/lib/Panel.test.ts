@@ -873,3 +873,16 @@ it("opens a module-only notification at Agents even when first-use welcome is pe
   expect(completeWelcome).not.toHaveBeenCalled();
   expect(core.chooseAnchor).not.toHaveBeenCalled();
 });
+
+
+it("accepts a newer revision clearing the previous context even with a null reading time", async () => {
+  const initial = { module: "trello" as const, updatedAt: 10, data: trelloFull, revision: 1, runtimeId: "test-runtime", contextGeneration: 1 };
+  const { core, publish } = fakeCore({ snapshots: [initial] });
+  render(Panel, { core });
+  expect(await screen.findByText("17 cards · 8 listas")).toBeInTheDocument();
+  const cleared = { module: "trello" as const, updatedAt: null, revision: 2, runtimeId: "test-runtime", contextGeneration: 2,
+    data: { state: "missingCredential", refreshing: false, account: null, boards: [], board: null, lists: null } };
+  await publish(cleared);
+  expect(screen.queryByText("17 cards · 8 listas")).not.toBeInTheDocument();
+  expect(within(section("Trello")).getByRole("button", { name: "Configurar Trello" })).toBeInTheDocument();
+});

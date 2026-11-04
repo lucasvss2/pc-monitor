@@ -52,9 +52,15 @@
   const intersecting = new Set<Module>();
   let reported: string | null = null;
 
+  let runtimeId: string | undefined;
+  let bootstrapped = false;
+  const pendingSnapshots: Snapshot[] = [];
   function receive(s: Snapshot) {
+    if (!bootstrapped) { pendingSnapshots.push(s); return; }
+    if (runtimeId && s.runtimeId !== runtimeId) return;
     const previous = snapshots[s.module];
-    if (!previous || (previous.updatedAt ?? 0) <= (s.updatedAt ?? 0)) snapshots[s.module] = s;
+    if (previous?.revision !== undefined && s.revision !== undefined && s.revision <= previous.revision) return;
+    snapshots[s.module] = s;
   }
 
   /** Report the visible set to the core only when it changes. */
@@ -186,10 +192,13 @@
     const stopTarget = core.listenAgentTarget?.((session) => { if (!disposed) void target(session); });
     const stopMedia = appearance.watch();
     const stopTheme = core.listenSystemTheme?.((theme) => { if (!disposed) appearance.desktop = theme; });
-    core.initialState().then(async (initial) => {
+    stop.then(() => core.initialState()).then(async (initial) => {
       if (disposed) return;
       if (!visibilityReceived) nativeVisible = initial.panelVisible ?? false;
+      runtimeId = initial.runtimeId;
+      bootstrapped = true;
       initial.snapshots.forEach(receive);
+      pendingSnapshots.splice(0).forEach(receive);
       unavailableModules = initial.unavailableModules ?? [];
       if (initial.appearance) appearance.preference = initial.appearance;
       appearance.desktop ??= initial.systemTheme ?? null;

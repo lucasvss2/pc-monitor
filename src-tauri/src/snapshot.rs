@@ -18,22 +18,56 @@ pub struct Snapshot {
 }
 
 /// Latest snapshot of each module, delivered when the UI loads.
-#[derive(Default)]
-pub struct Snapshots(Mutex<HashMap<Module, Snapshot>>);
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Publication {
+    #[serde(flatten)]
+    pub snapshot: Snapshot,
+    pub runtime_id: String,
+    pub revision: u64,
+    pub context_generation: u64,
+}
+
+pub struct Snapshots {
+    runtime_id: String,
+    latest: Mutex<HashMap<Module, Publication>>,
+}
+impl Default for Snapshots {
+    fn default() -> Self {
+        use crate::ports::Clock;
+        Self {
+            runtime_id: format!("{}-{}", crate::ports::SystemClock.now(), std::process::id()),
+            latest: Mutex::default(),
+        }
+    }
+}
 
 impl Snapshots {
-    fn store(&self, snapshot: Snapshot) {
-        self.0.lock().unwrap().insert(snapshot.module, snapshot);
+    fn store(&self, snapshot: Snapshot) -> Publication {
+        let mut latest = self.latest.lock().unwrap();
+        let revision = latest.get(&snapshot.module).map_or(1, |p| p.revision + 1);
+        let publication = Publication {
+            context_generation: snapshot.data["contextGeneration"].as_u64().unwrap_or(0),
+            snapshot,
+            runtime_id: self.runtime_id.clone(),
+            revision,
+        };
+        latest.insert(publication.snapshot.module, publication.clone());
+        publication
     }
 
-    pub fn all(&self) -> Vec<Snapshot> {
-        self.0.lock().unwrap().values().cloned().collect()
+    pub fn runtime_id(&self) -> &str {
+        &self.runtime_id
+    }
+
+    pub fn all(&self) -> Vec<Publication> {
+        self.latest.lock().unwrap().values().cloned().collect()
     }
 }
 
 /// Store the snapshot and push it to the UI.
 pub fn publish(app: &AppHandle, snapshot: Snapshot) {
     let event = format!("snapshot:{}", snapshot.module.id());
-    app.state::<Snapshots>().store(snapshot.clone());
-    let _ = app.emit(&event, snapshot);
+    let publication = app.state::<Snapshots>().store(snapshot);
+    let _ = app.emit(&event, publication);
 }

@@ -8,12 +8,13 @@ use tauri::{AppHandle, State};
 use crate::collection;
 use crate::module::Module;
 use crate::panel;
-use crate::snapshot::{Snapshot, Snapshots};
+use crate::snapshot::{Publication, Snapshots};
 use crate::state::AppState;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitialState {
+    runtime_id: String,
     unavailable_modules: Vec<Module>,
     panel_visible: bool,
     last_anchor: Module,
@@ -23,7 +24,7 @@ pub struct InitialState {
     /// Desktop color scheme; None when the portal has not answered.
     system_theme: Option<crate::desktop_theme::SystemTheme>,
     agent_target: Option<String>,
-    snapshots: Vec<Snapshot>,
+    snapshots: Vec<Publication>,
 }
 
 #[tauri::command]
@@ -35,6 +36,7 @@ pub fn initial_state(
 ) -> InitialState {
     let state = state.lock().unwrap();
     InitialState {
+        runtime_id: snapshots.runtime_id().into(),
         unavailable_modules: if cfg!(windows) {
             vec![Module::Ai, Module::Network, Module::System]
         } else {

@@ -164,7 +164,7 @@ impl<A: TrelloApi, R: Clock> Trello<A, R> {
     }
     /// Start from the sanitized disk cache, before any request.
     pub fn with_persistence(mut self, persistence: impl Persistence + 'static) -> Self {
-        if let Some(snapshot) = persistence.load(Module::Trello) {
+        if let Some(snapshot) = persistence.load(Module::Tasks) {
             self.updated_at = snapshot.updated_at;
             self.data = snapshot.data;
         }
@@ -210,7 +210,7 @@ impl<A: TrelloApi, R: Clock> Trello<A, R> {
             .save("trello", &serde_json::to_string(&credential).unwrap())
             .map_err(|_| CredentialError::KeyringUnavailable)?;
         if board.is_none() {
-            self.persistence.clear(Module::Trello);
+            self.persistence.clear(Module::Tasks);
             self.data = disconnected();
             self.data["state"] = json!("chooseBoard");
             self.updated_at = None;
@@ -255,7 +255,7 @@ impl<A: TrelloApi, R: Clock> Trello<A, R> {
             .save("trello", &serde_json::to_string(&credential).unwrap())
             .map_err(|_| CredentialError::KeyringUnavailable)?;
         if self.data["board"]["id"] != json!(board.id) {
-            self.persistence.clear(Module::Trello);
+            self.persistence.clear(Module::Tasks);
             self.data["lists"] = Value::Null;
             self.updated_at = None;
         }
@@ -281,7 +281,7 @@ impl<A: TrelloApi, R: Clock> Trello<A, R> {
         self.keyring
             .delete("trello")
             .map_err(|_| CredentialError::KeyringUnavailable)?;
-        self.persistence.clear(Module::Trello);
+        self.persistence.clear(Module::Tasks);
         self.data = disconnected();
         self.pending_key = None;
         self.updated_at = None;
@@ -453,7 +453,7 @@ impl<A: TrelloApi, R: Clock> Trello<A, R> {
             }
         }
         Snapshot {
-            module: Module::Trello,
+            module: Module::Tasks,
             updated_at: self.updated_at,
             data,
         }
@@ -631,7 +631,7 @@ impl<A: TrelloApi, R: Clock> Trello<A, R> {
     /// Metadata only: never paths, board content or credentials.
     fn log(&self, event: Event, http_status: Option<u16>, started_at: u64) {
         self.persistence.log(LogRecord {
-            source: Module::Trello,
+            source: Module::Tasks,
             event,
             http_status,
             duration_ms: self.clock.now().saturating_sub(started_at),
@@ -794,7 +794,7 @@ pub fn start(app: tauri::AppHandle) {
                 previous_status = current_status;
                 crate::snapshot::publish(&app, trello.snapshot(false));
             }
-            let visible = crate::collection::is_visible(&app, Module::Trello);
+            let visible = crate::collection::is_visible(&app, Module::Tasks);
             // Publish previous data before blocking on HTTP.
             if let Some(snapshot) = trello.begin(visible, manual) {
                 crate::snapshot::publish(&app, snapshot);

@@ -14,6 +14,10 @@ export interface Operation {
 
 export interface Snapshot {
   module: Module;
+  /** Native publications are ordered by runtime/revision, never the civil clock. */
+  runtimeId?: string;
+  revision?: number;
+  contextGeneration?: number;
   /** Last update in epoch milliseconds; null until data exists. */
   updatedAt: number | null;
   data: unknown;
@@ -68,6 +72,7 @@ export interface GeneralSettings {
 }
 
 export interface InitialState {
+  runtimeId?: string;
   /** Capabilities not implemented by the current native adapter. */
   unavailableModules?: Module[];
   panelVisible?: boolean;

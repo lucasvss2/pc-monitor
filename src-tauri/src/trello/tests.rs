@@ -19,7 +19,7 @@ impl TrelloApi for NoHttp {
 fn without_credentials_the_module_stays_visible_with_setup_state() {
     let mut trello = Trello::new(NoHttp, FakeClock::at(NOW));
     let snapshot = trello.step(true, false).unwrap();
-    assert_eq!(snapshot.module, Module::Trello);
+    assert_eq!(snapshot.module, Module::Tasks);
     assert_eq!(snapshot.data["state"], "missingCredential");
     assert!(snapshot.data["lists"].is_null());
 }
