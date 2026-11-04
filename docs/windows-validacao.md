@@ -10,6 +10,8 @@ Testes de configuração de hooks usam diretórios temporários. Nenhum instala 
 
 O hook Windows tem orçamento externo de três segundos para acomodar a inicialização do PowerShell; o binário mantém limite de 100 ms e 64 KiB para stdin e transporte sem espera por receptor ausente/ocupado. O teste do executável usa o mesmo limite externo. Ubuntu conserva o orçamento anterior de um segundo. Falha do hook não aprova nem bloqueia a ação do agente; a leitura periódica continua sendo a alternativa, com cobertura Windows ainda parcial neste incremento.
 
+A CI repete o teste do hook com o executável de release que usa subsistema GUI, antes de oferecer o artefato. Assim, o teste não se limita ao binário de console do perfil debug. SQLite embutido fica restrito ao Windows; Ubuntu conserva a dependência de sistema anterior.
+
 O runner `windows-2025` comprova execução das APIs no Windows do runner. Não substitui uma sessão gráfica em Windows 11 x64 nem aceite Ubuntu/GNOME/Wayland. Depois das verificações, o workflow oferece um executável experimental sem assinatura como artefato temporário, sem publicar release.
 
 Durante este incremento, os coletores ainda inativos no Windows e suas portas preservadas têm exceções localizadas somente para `dead_code`, com motivo no código. A CI conserva `-D warnings` para os demais lints e continua verificando Ubuntu integralmente. Remover essas exceções ao ativar os coletores nas próximas etapas; elas não validam suporte às fontes ausentes.

@@ -45,7 +45,10 @@ fn windows_hook_command_preserves_stdin_and_special_paths_without_content_leaks(
         .tempdir()
         .unwrap();
     let executable = root.path().join("monitor.exe");
-    std::fs::copy(env!("CARGO_BIN_EXE_kvojps-monitor"), &executable).unwrap();
+    let binary = std::env::var_os("KVOJPS_MONITOR_TEST_BINARY")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| env!("CARGO_BIN_EXE_kvojps-monitor").into());
+    std::fs::copy(binary, &executable).unwrap();
     let command = kvojps_monitor_lib::validation_hook_command(&executable.to_string_lossy());
     let encoded = command.split_whitespace().last().unwrap();
     let mut child = Command::new("powershell.exe")
@@ -78,7 +81,24 @@ fn windows_hook_command_preserves_stdin_and_special_paths_without_content_leaks(
     }
     let mut bytes = [0u8; 65536];
     let mut count = 0;
-    unsafe { ReadFile(server, Some(&mut bytes), Some(&mut count), None) }.unwrap();
+    // A GUI release executable may outlive the shell; wait for the packet too.
+    loop {
+        unsafe {
+            let _ = ConnectNamedPipe(server, None);
+        }
+        let mut available = 0;
+        if unsafe { PeekNamedPipe(server, None, 0, None, Some(&mut available), None) }.is_ok()
+            && available > 0
+        {
+            unsafe { ReadFile(server, Some(&mut bytes), Some(&mut count), None) }.unwrap();
+            break;
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(3),
+            "hook metadata deadline exceeded"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
     let text = std::str::from_utf8(&bytes[..count as usize]).unwrap();
     assert!(!text.contains("PRIVATE_"));
     let metadata: serde_json::Value = serde_json::from_str(text).unwrap();

@@ -32,10 +32,12 @@ dirs = "6"
 
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 reqwest = { version = "0.13", features = ["blocking", "json"] }
-rusqlite = { version = "0.38", features = ["bundled"] }
+rusqlite = "0.38"
 base64 = "0.22"
 
 [target.'cfg(windows)'.dependencies]
+# Keep Ubuntu on its existing system SQLite; Windows ships a self-contained build.
+rusqlite = { version = "0.38", features = ["bundled"] }
 tauri = { version = "2", features = ["tray-icon"] }
 windows-registry = "0.6"
 windows-core = "0.62"

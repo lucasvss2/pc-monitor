@@ -92,6 +92,13 @@ jobs:
       - name: Tauri build without bundling
         run: npm run tauri -- build --no-bundle
 
+      - name: Release GUI executable also supports silent hook mode
+        if: runner.os == 'Windows'
+        working-directory: src-tauri
+        run: |
+          $env:KVOJPS_MONITOR_TEST_BINARY = (Resolve-Path 'target/release/kvojps-monitor.exe').Path
+          cargo test --locked --test windows_hook_mode windows_hook_command_preserves_stdin_and_special_paths_without_content_leaks -- --exact
+
       - name: Windows foundation executable (experimental, unsigned)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
