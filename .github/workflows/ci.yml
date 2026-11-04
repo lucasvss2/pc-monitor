@@ -50,6 +50,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
 
       - run: npm ci
 
@@ -88,3 +89,12 @@ jobs:
 
       - name: Tauri build without bundling
         run: npm run tauri -- build --no-bundle
+
+      - name: Windows foundation executable (experimental, unsigned)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-foundation-experimental-unsigned
+          path: src-tauri/target/release/kvojps-monitor.exe
+          retention-days: 7
+          if-no-files-found: error

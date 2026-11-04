@@ -305,7 +305,7 @@
     </main>
 
     {#if area === "settings"}
-      <Settings bind:this={settings} {core} {snapshots} {welcome} {appearance} back={backToPanel} />
+      <Settings bind:this={settings} {core} {snapshots} {welcome} {appearance} {unavailableModules} back={backToPanel} />
     {/if}
   </div>
   <OperationsStrip {snapshots} ready={presented && appearanceRestored && nativeVisible && pageVisible} />

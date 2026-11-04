@@ -97,18 +97,20 @@ impl DesktopSettings for PortalSettings {
 }
 
 pub struct WindowsConnectivity;
-impl WindowsConnectivity {
-    pub fn connect() -> Self {
-        Self
-    }
-}
 impl crate::network::NetworkManager for WindowsConnectivity {
     fn connection(&self) -> io::Result<crate::network::Connection> {
-        let mut flags = 0;
-        let online = unsafe {
-            windows::Win32::Networking::WinInet::InternetGetConnectedState(&mut flags, 0)
+        use windows::Win32::{Networking::NetworkListManager::*, System::Com::*};
+        unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok() }
+            .map_err(|_| io::Error::other("connectivity unavailable"))?;
+        let result = (|| -> windows::core::Result<bool> {
+            let manager: INetworkListManager =
+                unsafe { CoCreateInstance(&NetworkListManager, None, CLSCTX_ALL) }?;
+            Ok(unsafe { manager.IsConnectedToInternet() }?.as_bool())
+        })();
+        unsafe {
+            CoUninitialize();
         }
-        .as_bool();
+        let online = result.map_err(|_| io::Error::other("connectivity unavailable"))?;
         Ok(crate::network::Connection {
             connectivity: if online { 4 } else { 1 },
             ..Default::default()

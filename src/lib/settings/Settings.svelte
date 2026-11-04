@@ -13,7 +13,8 @@
   import { moduleStatus } from "./status";
   import Welcome from "./Welcome.svelte";
 
-  let { core, snapshots, welcome, appearance, back }: {
+  let { core, snapshots, welcome, appearance, back, unavailableModules = [] }: {
+    unavailableModules?: Module[];
     core: Core;
     snapshots: Partial<Record<Module, Snapshot>>;
     welcome: boolean;
@@ -39,7 +40,7 @@
   const isSection = (value: string): value is Section => Object.hasOwn(TITLES, value);
   /** Same rule as the welcome: only modules that need configuration get a mark. */
   const needsSetup = (section: Section) =>
-    section !== "general" && section !== "appearance" && moduleStatus(section, snapshots[section]) === "needsSetup";
+    section !== "general" && section !== "appearance" && !unavailableModules.includes(section) && moduleStatus(section, snapshots[section]) === "needsSetup";
 
   /** No section yet: the welcome fills the right side on the first opening. */
   let selected = $state<Section | null>(null);
@@ -111,7 +112,11 @@
 
     <div class="content">
       <div class="pane {selected ?? 'welcome'}" bind:this={pane}>
-        {#if !selected}
+        {#if !selected && unavailableModules.length > 0}
+          <section><h3>{t.settings.title}</h3><p>Selecione uma seção. Os recursos ainda indisponíveis estão identificados no Painel e nas Configurações.</p></section>
+        {:else if selected && selected !== "general" && selected !== "appearance" && unavailableModules.includes(selected)}
+          <section><h3>{TITLES[selected]}</h3><p role="status">Indisponível no Windows nesta versão de validação.</p></section>
+        {:else if !selected}
           <Welcome {snapshots} configure={(m) => void focus(m)}
             connectClaude={() => void (core.connectClaude?.() ?? Promise.reject()).catch(() => focus("ai"))} />
         {:else if selected === "general"}

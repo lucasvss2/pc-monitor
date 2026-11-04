@@ -39,7 +39,7 @@ base64 = "0.22"
 tauri = { version = "2", features = ["tray-icon"] }
 windows-registry = "0.6"
 windows-core = "0.62"
-windows = { version = "0.62", features = ["Data_Xml_Dom", "UI_Notifications", "Foundation", "Win32_Foundation", "Win32_Security", "Win32_Security_Credentials", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Memory", "Win32_System_IO", "Win32_System_Power", "Win32_UI_WindowsAndMessaging", "Win32_System_Registry", "Win32_System_Pipes", "Win32_System_Threading", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_Notifications", "Win32_Networking_WinInet"] }
+windows = { version = "0.62", features = ["Data_Xml_Dom", "UI_Notifications", "Foundation", "Win32_Foundation", "Win32_Security", "Win32_Security_Credentials", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Memory", "Win32_System_IO", "Win32_System_Power", "Win32_UI_WindowsAndMessaging", "Win32_System_Registry", "Win32_System_Pipes", "Win32_System_Threading", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_Notifications", "Win32_Networking_NetworkListManager"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 keyring = { version = "3.6", default-features = false, features = ["sync-secret-service", "crypto-rust"] }

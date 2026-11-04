@@ -48,7 +48,7 @@ pub fn session() -> WindowsSession {
         )
     };
     WindowsSession {
-        registration: (result.0 == 0).then_some(HPOWERNOTIFY(registration)),
+        registration: (result.0 == 0).then_some(HPOWERNOTIFY(registration as isize)),
         _context: context,
         queue,
     }
