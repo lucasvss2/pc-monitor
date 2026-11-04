@@ -612,8 +612,16 @@ fn codex_hook_without_polling_is_not_closed_by_an_unrelated_claude_read() {
         cwd: "/tmp/example".into(),
         interrupted: false,
     };
-    monitor.hook(event(Provider::Codex, "synthetic-waiting", SessionState::Waiting));
-    monitor.hook(event(Provider::Claude, "synthetic-working", SessionState::Working));
+    monitor.hook(event(
+        Provider::Codex,
+        "synthetic-waiting",
+        SessionState::Waiting,
+    ));
+    monitor.hook(event(
+        Provider::Claude,
+        "synthetic-working",
+        SessionState::Working,
+    ));
     for _ in 0..2 {
         clock.advance(2000);
         let data = monitor.step().unwrap();
@@ -625,9 +633,16 @@ fn codex_hook_without_polling_is_not_closed_by_an_unrelated_claude_read() {
         assert!(data.closed.iter().any(|s| s.id == "synthetic-working"));
         assert!(notifications.1.lock().unwrap().is_empty());
     }
-    let data = monitor.hook(event(Provider::Codex, "synthetic-waiting", SessionState::Closed));
+    let data = monitor.hook(event(
+        Provider::Codex,
+        "synthetic-waiting",
+        SessionState::Closed,
+    ));
     assert!(data.sessions.is_empty());
-    assert!(data.closed.iter().any(|s| s.id == "codex:synthetic-waiting"));
+    assert!(data
+        .closed
+        .iter()
+        .any(|s| s.id == "codex:synthetic-waiting"));
     assert_eq!(*notifications.1.lock().unwrap(), vec![1]);
 }
 
