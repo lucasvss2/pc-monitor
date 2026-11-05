@@ -44,12 +44,14 @@ CI [41934400956](https://github.com/lucasvss2/pc-monitor/actions/runs/4193440095
 
 Candidato sem assinatura, 10.028.032 bytes, mantido para esse aceite em `%TEMP%/pc-monitor-ai-ab09af5-qa/kvojps-monitor.exe`. SHA-256: `DA8CF3EBD0E4C75DF134C0FB92303CF145DF83BC331EDCFE87B3010CF9000FD9`. Executado pela interface após autorização do usuário; aceite visual pendente. Roteiro em [Limites de IA Windows](../../../docs/ia-windows-validacao.md).
 
-Ferramentas portáteis de Rust, arquivos baixados para formatação e diretórios dos probes locais foram removidos. A pasta da candidata contém somente o EXE. A instância anterior foi encerrada para substituição autorizada; seu arquivo permanece como alternativa até confirmar o aceite da candidata.
+Ferramentas portáteis de Rust, arquivos baixados para formatação e diretórios dos probes locais foram removidos. A instância anterior foi encerrada para a substituição autorizada.
 
 Na sessão Windows 11, a candidata iniciou como única instância e criou um filho Codex app-server. O cache sanitizado do próprio aplicativo confirmou leitura recente com fonte `appServer`; a projeção de evidência registra somente essas flags, sem números ou identidade. A automação não obteve janela endereçável, então a conferência visual segue assistida pelo usuário.
 
 Em 05/11/2026, o usuário confirmou a leitura semanal do Codex no Painel. A captura também confirmou que o Jira carregou. A leitura local continha a janela semanal e não incluía a janela de 5 h. A comparação com o Codex revelou que o Painel mostrava a parcela consumida. Os instrumentos de IA passaram a mostrar o restante, com rótulos explícitos nas janelas de 5 h e semanal. O teste usa a fixture sanitizada existente.
 
-A [CI 42075201282](https://github.com/lucasvss2/pc-monitor/actions/runs/42075201282) passou na revisão `4e9305e`, com 393 testes de interface, incluindo 46 do módulo de IA, e verificação nativa do EXE release. O executável sem assinatura tem SHA-256 `936ED90CDCF6AF4E16C7689C6F8AE5CF6B15A8A7575C5B44ACB5849058705A8A` e está preparado em `%TEMP%/pc-monitor-ai-4e9305e-qa/kvojps-monitor.exe` para o aceite gráfico.
+A [CI 42075201282](https://github.com/lucasvss2/pc-monitor/actions/runs/42075201282) passou na revisão `4e9305e`, com 393 testes de interface, incluindo 46 do módulo de IA, e verificação nativa do EXE release. O executável sem assinatura tem SHA-256 `936ED90CDCF6AF4E16C7689C6F8AE5CF6B15A8A7575C5B44ACB5849058705A8A` e está em `%TEMP%/pc-monitor-ai-4e9305e-qa/kvojps-monitor.exe`.
 
-Pendências: conferir a exibição do restante no EXE atualizado e repetir arraste, X e Escape. O aceite Claude real depende da disponibilidade do CLI. A descoberta de Sessões de agente continua parcial no Windows. Esse próximo incremento exige evidência de execução viva. Trello e aceite gráfico Ubuntu continuam adiados conforme orientação do usuário.
+Após autorização do usuário, a revisão corrigida iniciou como única instância e obteve uma leitura do app-server após a abertura. O usuário confirmou que a porcentagem restante semanal no Painel coincide com a do Codex. Duas versões temporárias anteriores foram removidas após verificar o hash, a ausência de processos ativos e as referências do Windows.
+
+Pendências: repetir arraste, X e Escape. O aceite Claude real depende da disponibilidade do CLI. A descoberta de Sessões de agente continua parcial no Windows. Esse próximo incremento exige evidência de execução viva. Trello e aceite gráfico Ubuntu continuam adiados conforme orientação do usuário.
