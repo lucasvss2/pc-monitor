@@ -217,7 +217,7 @@ pub fn start(app: &AppHandle) {
                 f.automatic_speed(enabled);
                 Some(Module::Network)
             }
-            crate::network::Command::Visible(_) | crate::network::Command::Resume => None,
+            crate::network::Command::Visible(_) | crate::network::Command::Sleep(_) => None,
         },
     )));
     app.manage(crate::ai::Collector(serve(app, &shared, |f, command| {

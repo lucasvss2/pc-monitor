@@ -65,3 +65,9 @@ A composição Windows chamava a consulta do Claude mesmo quando seu CLI estava 
 A [CI 42081953119](https://github.com/lucasvss2/pc-monitor/actions/runs/42081953119), revisão `aae49d3`, passou nos testes de interface e de núcleo, incluindo 271 testes Rust Windows, e na verificação nativa do EXE release. A prévia com dados sintéticos confirmou o mostrador semanal principal, a ausência do cartão Claude e a orientação de sessões.
 
 No Windows 11 local, a abertura autorizada do EXE sem assinatura foi recusada pela Integridade de Código (eventos 3077 e 3033). O aceite gráfico do EXE segue pendente. A versão anterior voltou a rodar e a cópia temporária bloqueada foi removida. O candidato continua disponível como artefato da CI.
+
+## Prova isolada de execução viva
+
+Um `codex exec` nativo com home de teste e provedor HTTP em loopback gravou um rollout e sua referência no SQLite. O Restart Manager associou o arquivo ao processo durante a requisição de teste. Após encerrar somente o processo de teste, a associação desapareceu apesar de o histórico continuar no disco. Foram inspecionados apenas metadados de origem e presença no home sintético. O diretório foi removido.
+
+A prova cobre uma execução `exec` e confirma um sinal que distingue execução viva de histórico. A consulta periódica continua sem adaptador Windows. Para integrar o sinal, falta verificar o CLI interativo, a atribuição entre execuções simultâneas, as permissões e o custo de verificar históricos grandes. [API RmGetList](https://learn.microsoft.com/en-us/windows/win32/api/restartmanager/nf-restartmanager-rmgetlist)
