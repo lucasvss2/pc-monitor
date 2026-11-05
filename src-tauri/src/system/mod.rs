@@ -240,7 +240,7 @@ impl Collector {
             );
             #[cfg(windows)]
             let source = crate::platform::SystemReadings;
-            let mut system = System::new(source, clock);
+            let mut system = System::new(source, SystemClock);
             loop {
                 let event = match system.deadline() {
                     Some(deadline) => rx.recv_timeout(Duration::from_millis(
