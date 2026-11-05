@@ -16,7 +16,9 @@ O runner `windows-2025` comprova execução das APIs no Windows do runner. Não 
 
 As métricas nativas têm provas de CPU, RAM, disco fixo, rota ativa e ICMP em loopback. Temperatura, segurança avançada da rede e tráfego por aplicativo têm indicação de indisponibilidade no Painel Windows. A ausência de bateria é diferenciada de erro de leitura. Os adaptadores avançados exclusivos do Linux ainda têm exceções localizadas para `dead_code` no Windows.
 
-Na revisão `e3eada5`, a [CI de Rede e Sistema](https://github.com/lucasvss2/pc-monitor/actions/runs/42089152550) concluiu os dois alvos e gerou o EXE experimental. No Windows, 277 testes Rust passaram, incluindo os testes de métricas nativas e retomada de Sistema sem internet. A prévia do Painel usou dados sintéticos. Reconexão, suspensão física e aceite gráfico desta revisão continuam pendentes.
+Na revisão `e3eada5`, a [CI de Rede e Sistema](https://github.com/lucasvss2/pc-monitor/actions/runs/42089152550) concluiu os dois alvos e gerou o EXE experimental. No Windows, 277 testes Rust passaram, incluindo os testes de métricas nativas e retomada de Sistema sem internet. A prévia do Painel usou dados sintéticos.
+
+Em 05/11/2026, o EXE sem assinatura `e3eada5` (SHA-256 iniciado por `32CD2973`) abriu após autorização em Windows 11. O Painel mostrou conexão cabeada, latência, taxas de tráfego e o resultado do teste automático de velocidade. CPU e tráfego mudaram entre observações. RAM e disco apareceram com leituras reais, ausência de bateria e temperatura indisponível foram indicadas, e o perfil de IA mostrou apenas Codex com a janela semanal em destaque. O teste manual de velocidade, a reconexão e a suspensão física seguem pendentes. A cópia temporária anterior foi removida depois de conferir a instância ativa e as referências do Windows.
 
 ## Aceite em sessão gráfica
 
