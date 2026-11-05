@@ -47,21 +47,22 @@
     return interpolate(t.ai.readAt, { time: (now - when >= 86_400_000 ? dayAndClock : clock).format(when) });
   }
 
-  /** Usage from which the reading is read aloud as high; prototype B shows no line or colour for it. */
-  const HIGH = 85;
+  /** At most this much allowance remains when usage is read aloud as high. */
+  const HIGH_USAGE_REMAINING = 15;
 
-  /** The value read aloud, naming high usage for assistive technology only. */
   function valueText(percent: number) {
-    return percent >= HIGH ? `${percent}% · ${t.ai.high}` : `${percent}%`;
+    const remaining = interpolate(t.ai.remainingValue, { percent: String(percent) });
+    return percent <= HIGH_USAGE_REMAINING ? `${remaining} · ${t.ai.high}` : remaining;
   }
 
   function restarted(window: AiWindow) {
     return window.reset || (window.resetsAt !== null && window.resetsAt <= now);
   }
 
-  /** Null once the window restarted: never shown as 0%. */
-  function usedPercent(window: AiWindow | null) {
-    return window && !restarted(window) && window.usedPercent !== null ? Math.round(window.usedPercent) : null;
+  /** An absent or restarted window has no known remaining allowance. */
+  function remainingPercent(window: AiWindow | null) {
+    if (!window || restarted(window) || window.usedPercent === null) return null;
+    return Math.max(0, Math.min(100, Math.round(100 - window.usedPercent)));
   }
   /** Why a window has no value: no reading, or restarted without a new one. */
   function missing(window: AiWindow | null) {
@@ -165,13 +166,12 @@
     <circle class="orbit" cx="60" cy="60" r="55" />
     <circle class="base" cx="60" cy="60" r="47" />
     {#if arc !== null}
-      <circle class="arc" cx="60" cy="60" r="47" pathLength="100" stroke-dasharray="{Math.min(100, arc)} 100" transform="rotate(-90 60 60)" />
+      <circle class="arc" cx="60" cy="60" r="47" pathLength="100" stroke-dasharray="{arc} 100" transform="rotate(-90 60 60)" />
     {/if}
   </svg>
 {/snippet}
 
-{#snippet dial(provider: string, window: AiWindow | null)}
-  {@const percent = usedPercent(window)}
+{#snippet dial(provider: string, window: AiWindow | null, percent: number | null)}
   {@const name = interpolate(t.ai.fiveHourOf, { provider })}
   {#if percent === null}
     <div class="dial" role="img" aria-label="{name}: {missing(window)}">
@@ -216,14 +216,14 @@
     {:else}
       {@const five = windowOf(provider.reading, FIVE_HOURS)}
       {@const week = windowOf(provider.reading, WEEK)}
-      {@const fivePercent = usedPercent(five)}
-      {@const weekPercent = usedPercent(week)}
+      {@const fivePercent = remainingPercent(five)}
+      {@const weekPercent = remainingPercent(week)}
       <section class="provider" aria-label={provider.name} style:--instrument={provider.tone} data-stale={provider.old}>
         <div class="instrument">
-          {@render dial(provider.name, five)}
+          {@render dial(provider.name, five, fivePercent)}
           <h3>{provider.name}</h3>
-          <small>{fivePercent !== null && five?.resetsAt != null
-            ? interpolate(t.ai.fiveHourResets, { time: clock.format(five.resetsAt) }) : t.ai.fiveHour}</small>
+          <small>{fivePercent === null ? t.ai.fiveHour : five?.resetsAt == null ? t.ai.fiveHourRemaining
+            : interpolate(t.ai.fiveHourResets, { time: clock.format(five.resetsAt) })}</small>
           {#if fivePercent === null}<small class="line">{missing(five)}</small>{/if}
         </div>
         <div class="meter">
@@ -231,7 +231,7 @@
           {#if weekPercent !== null}
             <div class="track" role="meter" aria-label={interpolate(t.ai.weeklyOf, { provider: provider.name })}
               aria-valuemin={0} aria-valuemax={100} aria-valuenow={weekPercent} aria-valuetext={valueText(weekPercent)}>
-              <i style:width="{Math.min(100, weekPercent)}%"></i>
+              <i style:width="{weekPercent}%"></i>
             </div>
             {#if week?.resetsAt != null}<small>{interpolate(t.ai.weeklyResets, { date: date.format(week.resetsAt) })}</small>{/if}
           {:else}

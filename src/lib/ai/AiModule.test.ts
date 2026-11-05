@@ -20,27 +20,28 @@ afterEach(() => {
 
 const provider = (name: string) => screen.getByRole("region", { name });
 
-it("shows a five hour instrument per provider with usage and reset", () => {
+it("shows the remaining five hour allowance and reset for each provider", () => {
   render(AiModule, { data: usage as AiData, refresh: vi.fn() });
   const codex = within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" });
-  expect(codex).toHaveAttribute("aria-valuenow", "91");
-  expect(codex).toHaveTextContent("91%");
-  expect(within(provider("Codex")).getByText("5 h · reinicia 14:22")).toBeInTheDocument();
+  expect(codex).toHaveAttribute("aria-valuenow", "9");
+  expect(codex).toHaveTextContent("9%");
+  expect(within(provider("Codex")).getByText("Restante em 5 h · reinicia 14:22")).toBeInTheDocument();
   const claude = within(provider("Claude")).getByRole("meter", { name: "Claude · janela de 5 h" });
-  expect(claude).toHaveAttribute("aria-valuenow", "15");
-  expect(within(provider("Claude")).getByText("5 h · reinicia 23:30")).toBeInTheDocument();
+  expect(claude).toHaveAttribute("aria-valuenow", "85");
+  expect(within(provider("Claude")).getByText("Restante em 5 h · reinicia 23:30")).toBeInTheDocument();
 });
 
 it("shows a weekly bar per provider from the all models bucket only", () => {
   render(AiModule, { data: usage as AiData, refresh: vi.fn() });
   const codex = within(provider("Codex")).getByRole("meter", { name: "Codex · semana" });
-  expect(codex).toHaveAttribute("aria-valuenow", "48");
-  expect(within(provider("Codex")).getByText("48%")).toBeInTheDocument();
-  // Claude's per model weekly limits (Sonnet 33%) stay out of the panel.
+  expect(codex).toHaveAttribute("aria-valuenow", "52");
+  expect(within(provider("Codex")).getByText("52%")).toBeInTheDocument();
+  expect(within(provider("Codex")).getByText("Restante na semana")).toBeInTheDocument();
+  // Claude's per model weekly limits (Sonnet 67% remaining) stay out of the panel.
   expect(within(provider("Claude")).getAllByRole("meter", { name: "Claude · semana" })
-    .map((meter) => meter.getAttribute("aria-valuenow"))).toEqual(["6"]);
+    .map((meter) => meter.getAttribute("aria-valuenow"))).toEqual(["94"]);
   expect(screen.queryByText("Sonnet")).not.toBeInTheDocument();
-  expect(screen.queryByText("33%")).not.toBeInTheDocument();
+  expect(screen.queryByText("67%")).not.toBeInTheDocument();
   expect(within(provider("Codex")).getByText("Reinício 04/11/2026")).toBeInTheDocument();
   expect(within(provider("Claude")).getByText("Reinício 05/11/2026")).toBeInTheDocument();
 });
@@ -64,7 +65,7 @@ it("removes a restarted window's arc and never shows it as 0%", async () => {
   expect(within(codex).queryByRole("meter", { name: "Codex · janela de 5 h" })).not.toBeInTheDocument();
   expect(within(codex).getByRole("img", { name: "Codex · janela de 5 h: Reiniciado às 14:22 · sem leitura nova" })).toBeInTheDocument();
   expect(within(codex).queryByText(/^0/)).not.toBeInTheDocument();
-  expect(within(codex).getByRole("meter", { name: "Codex · semana" })).toHaveAttribute("aria-valuenow", "48");
+  expect(within(codex).getByRole("meter", { name: "Codex · semana" })).toHaveAttribute("aria-valuenow", "52");
 });
 
 it("removes a restarted weekly bar and keeps the five hour reading", async () => {
@@ -73,7 +74,7 @@ it("removes a restarted weekly bar and keeps the five hour reading", async () =>
   const codex = provider("Codex");
   expect(within(codex).queryByRole("meter", { name: "Codex · semana" })).not.toBeInTheDocument();
   expect(within(codex).getByText("Reiniciado às 14:00 · sem leitura nova")).toBeInTheDocument();
-  expect(within(codex).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "91");
+  expect(within(codex).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "9");
 });
 
 it("keeps an old reading with its time, naming the date once it is a day old", async () => {
@@ -81,7 +82,7 @@ it("keeps an old reading with its time, naming the date once it is a day old", a
   vi.setSystemTime(1793460871000);
   const view = render(AiModule, { data: stale as AiData, refresh: vi.fn() });
   expect(within(provider("Codex")).getByText("Leitura 11:33")).toBeInTheDocument();
-  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "91");
+  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "9");
   view.unmount();
   const old = structuredClone(stale) as AiData;
   old.codex.reading!.readAt -= 86_400_000;
@@ -131,8 +132,8 @@ it("shows Claude's windows from the status line", async () => {
   render(AiModule, { data: connected as AiData, refresh: vi.fn() });
   const claude = provider("Claude");
   expect(within(claude).getByText("Leitura 11:26")).toBeInTheDocument();
-  expect(within(claude).getByRole("meter", { name: "Claude · janela de 5 h" })).toHaveAttribute("aria-valuenow", "24");
-  expect(within(claude).getByRole("meter", { name: "Claude · semana" })).toHaveAttribute("aria-valuenow", "41");
+  expect(within(claude).getByRole("meter", { name: "Claude · janela de 5 h" })).toHaveAttribute("aria-valuenow", "77");
+  expect(within(claude).getByRole("meter", { name: "Claude · semana" })).toHaveAttribute("aria-valuenow", "59");
   expect(within(claude).queryByRole("status")).not.toBeInTheDocument();
 });
 
@@ -184,7 +185,7 @@ it("shows an expired Claude token and keeps the status line reading", async () =
   const claude = provider("Claude");
   expect(within(claude).getByRole("status")).toHaveTextContent("⚠ Token do Claude expirado · abra o Claude Code");
   expect(within(claude).getByText("Leitura 20:00")).toBeInTheDocument();
-  expect(within(claude).getByRole("meter", { name: "Claude · janela de 5 h" })).toHaveAttribute("aria-valuenow", "20");
+  expect(within(claude).getByRole("meter", { name: "Claude · janela de 5 h" })).toHaveAttribute("aria-valuenow", "80");
 });
 
 it("shows sustained oauth/usage failures and keeps the last reading", async () => {
@@ -237,11 +238,11 @@ it("opens Settings from the module", async () => {
 it("names high usage only to assistive technology, as prototype B shows no line for it", () => {
   render(AiModule, { data: usage as AiData, refresh: vi.fn() });
   const codex = within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" });
-  expect(codex).toHaveAttribute("aria-valuetext", "91% · uso alto");
+  expect(codex).toHaveAttribute("aria-valuetext", "9% restantes · uso alto");
   expect(codex).not.toHaveTextContent("uso alto");
   expect(within(provider("Codex")).queryByRole("status")).not.toBeInTheDocument();
   expect(screen.queryByText(/uso alto/i)).not.toBeInTheDocument();
-  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · semana" })).toHaveAttribute("aria-valuetext", "48%");
+  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · semana" })).toHaveAttribute("aria-valuetext", "52% restantes");
   expect(within(provider("Claude")).queryByRole("status")).not.toBeInTheDocument();
   expect(provider("Codex").style.getPropertyValue("--instrument")).toBe("var(--accent)");
   expect(provider("Claude").style.getPropertyValue("--instrument")).toBe("var(--band-lavender-text)");
@@ -255,14 +256,18 @@ it("titles the shared card in prototype B's words, without source or update subt
   expect(screen.queryByText("Janela de 5 h")).not.toBeInTheDocument();
 });
 
-it("explains a window missing from the reading instead of guessing it", () => {
+it("shows remaining weekly allowance when the reading has no five hour window", () => {
   const onlyWeekly = structuredClone(usage) as AiData;
-  // A reading whose only window is weekly: no five hour value to show.
-  onlyWeekly.codex.reading!.buckets[0].primary = null;
+  // The app-server may put a lone weekly window in the primary slot.
+  const bucket = onlyWeekly.codex.reading!.buckets[0];
+  bucket.primary = bucket.secondary;
+  bucket.secondary = null;
   render(AiModule, { data: onlyWeekly, refresh: vi.fn() });
   const codex = provider("Codex");
   expect(within(codex).getByRole("img", { name: "Codex · janela de 5 h: Sem leitura dos limites" })).toBeInTheDocument();
-  expect(within(codex).getByRole("meter", { name: "Codex · semana" })).toHaveAttribute("aria-valuenow", "48");
+  const weekly = within(codex).getByRole("meter", { name: "Codex · semana" });
+  expect(weekly).toHaveAttribute("aria-valuenow", "52");
+  expect(weekly).toHaveAttribute("aria-valuetext", "52% restantes");
 });
 
 it("never labels a window of another duration as five hours or weekly", () => {
@@ -270,7 +275,7 @@ it("never labels a window of another duration as five hours or weekly", () => {
   other.codex.reading!.buckets[0].primary = { usedPercent: 40, durationMins: 60, resetsAt: null, reset: false };
   render(AiModule, { data: other, refresh: vi.fn() });
   expect(within(provider("Codex")).queryByRole("meter", { name: "Codex · janela de 5 h" })).not.toBeInTheDocument();
-  expect(within(provider("Codex")).queryByText("40%")).not.toBeInTheDocument();
+  expect(within(provider("Codex")).queryByText("60%")).not.toBeInTheDocument();
 });
 
 it("describes compact title actions on focus and pointer without changing focus on update", async () => {
@@ -317,12 +322,12 @@ it("explains a missing weekly value without claiming a restart", async () => {
 it("removes only the elapsed window while awaiting a new snapshot", async () => {
   vi.setSystemTime(1793413799000);
   render(AiModule, { data: usage as AiData, refresh: vi.fn() });
-  expect(within(provider("Claude")).getByRole("meter", { name: "Claude · janela de 5 h" })).toHaveAttribute("aria-valuenow", "15");
+  expect(within(provider("Claude")).getByRole("meter", { name: "Claude · janela de 5 h" })).toHaveAttribute("aria-valuenow", "85");
   await vi.advanceTimersByTimeAsync(1000);
   expect(within(provider("Claude")).queryByRole("meter", { name: "Claude · janela de 5 h" })).not.toBeInTheDocument();
   expect(within(provider("Claude")).getByText("Reiniciado às 23:30 · sem leitura nova")).toBeInTheDocument();
-  expect(within(provider("Claude")).getByRole("meter", { name: "Claude · semana" })).toHaveAttribute("aria-valuenow", "6");
-  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "91");
+  expect(within(provider("Claude")).getByRole("meter", { name: "Claude · semana" })).toHaveAttribute("aria-valuenow", "94");
+  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "9");
 });
 
 
@@ -413,7 +418,7 @@ it.each([true, false])("keeps missing-token guidance and an action after the str
   expect(provider("Claude")).toHaveTextContent("Token do Claude indisponível · abra o Claude Code");
   await fireEvent.click(within(provider("Claude")).getByRole("button", { name: "Configurar" }));
   expect(configure).toHaveBeenCalledOnce();
-  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "91");
+  expect(within(provider("Codex")).getByRole("meter", { name: "Codex · janela de 5 h" })).toHaveAttribute("aria-valuenow", "9");
 });
 
 // Snapshot fixtures are also exercised in the browser for geometry.
