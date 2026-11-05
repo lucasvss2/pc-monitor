@@ -44,7 +44,15 @@ function Invoke-StandardUserTest {
     $localAppData = [Environment]::GetFolderPath('LocalApplicationData')
     $roamingAppData = [Environment]::GetFolderPath('ApplicationData')
     $userProfile = [Environment]::GetFolderPath('UserProfile')
-    Assert ($localAppData -and $directory.StartsWith("$localAppData\", [StringComparison]::OrdinalIgnoreCase)) 'Install directory is outside LocalAppData'
+    $expected = Join-Path $localAppData $name
+    $resolved = (Get-Item -LiteralPath $directory).FullName
+    $expectedItem = Get-Item -LiteralPath $expected -ErrorAction SilentlyContinue
+    if (!$expectedItem -or $resolved -ne $expectedItem.FullName) {
+        $redactProfile = '(?i)([a-z]:\\Users\\)[^\\]+'
+        $safeActual = $directory -replace $redactProfile, '$1<profile>'
+        $safeExpected = $expected -replace $redactProfile, '$1<profile>'
+        throw "Unexpected installation directory: $safeActual (expected $safeExpected)"
+    }
     $app = Join-Path $directory "$name.exe"
     $uninstaller = Join-Path $directory 'uninstall.exe'
     foreach ($binary in @($app, $uninstaller)) {
