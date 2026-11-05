@@ -50,4 +50,6 @@ Na sessão Windows 11, a candidata iniciou como única instância e criou um fil
 
 Em 05/11/2026, o usuário confirmou a leitura semanal do Codex no Painel. A captura também confirmou que o Jira carregou. A leitura local continha a janela semanal e não incluía a janela de 5 h. A comparação com o Codex revelou que o Painel mostrava a parcela consumida. Os instrumentos de IA passaram a mostrar o restante, com rótulos explícitos nas janelas de 5 h e semanal. O teste usa a fixture sanitizada existente.
 
+A [CI 42075201282](https://github.com/lucasvss2/pc-monitor/actions/runs/42075201282) passou na revisão `4e9305e`, com 393 testes de interface, incluindo 46 do módulo de IA, e verificação nativa do EXE release. O executável sem assinatura tem SHA-256 `936ED90CDCF6AF4E16C7689C6F8AE5CF6B15A8A7575C5B44ACB5849058705A8A` e está preparado em `%TEMP%/pc-monitor-ai-4e9305e-qa/kvojps-monitor.exe` para o aceite gráfico.
+
 Pendências: conferir a exibição do restante no EXE atualizado e repetir arraste, X e Escape. O aceite Claude real depende da disponibilidade do CLI. A descoberta de Sessões de agente continua parcial no Windows. Esse próximo incremento exige evidência de execução viva. Trello e aceite gráfico Ubuntu continuam adiados conforme orientação do usuário.
