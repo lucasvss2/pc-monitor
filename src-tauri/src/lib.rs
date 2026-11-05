@@ -116,6 +116,12 @@ pub fn run() {
                 return;
             }
             panel::handle_window_event(event, || panel::close(window.app_handle()));
+            #[cfg(windows)]
+            if matches!(event, tauri::WindowEvent::ScaleFactorChanged { .. }) {
+                if let Some(panel) = window.app_handle().get_webview_window(panel::LABEL) {
+                    panel::recover_work_area(&panel);
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::initial_state,
@@ -124,6 +130,9 @@ pub fn run() {
             commands::report_visible_modules,
             commands::choose_anchor,
             commands::close_panel,
+            commands::set_panel_mode,
+            commands::set_panel_pinned,
+            commands::panel_clock,
             commands::refresh_ai,
             commands::connect_claude,
             commands::disconnect_claude,
@@ -153,13 +162,14 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("failed to start kvojps-monitor")
-        .run(|_, event| {
+        .run(|app, event| {
             // Closing destroys the only window; the app stays alive in the indicator.
-            if let RunEvent::ExitRequested {
-                code: None, api, ..
-            } = event
-            {
-                api.prevent_exit();
+            if let RunEvent::ExitRequested { code, api, .. } = event {
+                if code.is_none() {
+                    api.prevent_exit();
+                } else {
+                    panel::remember_geometry(app);
+                }
             }
         });
 }

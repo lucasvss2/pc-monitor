@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use crate::module::Module;
+use crate::panel::{PanelMode, PanelPreferences, Presentation};
 
 // Keep the existing filename so upgrades retain user preferences.
 const PREFERENCES_FILE: &str = "preferencias.json";
@@ -60,6 +61,8 @@ struct Preferences {
     /// The first-run welcome was shown.
     welcomed: bool,
     appearance: Appearance,
+    #[serde(skip_serializing_if = "PanelPreferences::is_default")]
+    panel: PanelPreferences,
     version_check: VersionCheck,
     #[serde(flatten)]
     extra: std::collections::BTreeMap<String, serde_json::Value>,
@@ -73,6 +76,7 @@ impl Default for Preferences {
             initialized: false,
             welcomed: false,
             appearance: Default::default(),
+            panel: Default::default(),
             version_check: Default::default(),
             extra: Default::default(),
         }
@@ -102,6 +106,14 @@ impl Preferences {
         result.welcomed = field(&value["welcomed"], false);
         result.appearance.theme = field(&value["appearance"]["theme"], Theme::System);
         result.appearance.reduce_motion = field(&value["appearance"]["reduceMotion"], false);
+        let panel = &value["panel"];
+        result.panel = PanelPreferences {
+            mode: field(&panel["mode"], PanelMode::Full),
+            pinned: field(&panel["pinned"], false),
+            full_size: field(&panel["fullSize"], None),
+            compact_size: field(&panel["compactSize"], None),
+            position: field(&panel["position"], None),
+        };
         let notifications = &value["agentNotifications"];
         result.agent_notifications.waiting = field(&notifications["waiting"], true);
         result.agent_notifications.done = field(&notifications["done"], true);
@@ -120,6 +132,7 @@ impl Preferences {
                     "inicializado",
                     "welcomed",
                     "appearance",
+                    "panel",
                     "agentNotifications",
                     "versionCheck",
                 ]
@@ -138,6 +151,9 @@ pub struct AppState {
     storage: Box<dyn Storage>,
     preferences: Preferences,
     panel_open: bool,
+    presented_mode: PanelMode,
+    pinned: bool,
+    pin_failed: bool,
     agent_target: Option<String>,
     /// Modules intersecting the visible panel area; empty when hidden or in Settings.
     visible: BTreeSet<Module>,
@@ -180,6 +196,9 @@ impl AppState {
             storage: Box::new(storage),
             preferences,
             panel_open: false,
+            presented_mode: PanelMode::Full,
+            pinned: false,
+            pin_failed: false,
             agent_target: None,
             visible: BTreeSet::new(),
             preferences_error,
@@ -240,6 +259,11 @@ impl AppState {
             return;
         }
         self.panel_open = true;
+        self.presented_mode = if self.agent_target.is_some() {
+            PanelMode::Full
+        } else {
+            self.preferences.panel.mode
+        };
         self.visible = BTreeSet::from([self.opening_anchor()]);
     }
 
@@ -247,6 +271,65 @@ impl AppState {
         self.panel_open = false;
         self.agent_target = None;
         self.visible.clear();
+    }
+
+    pub fn panel_preferences(&self) -> PanelPreferences {
+        self.preferences.panel
+    }
+
+    pub fn presentation(&self) -> Presentation {
+        Presentation {
+            mode: self.presented_mode,
+            preferred_mode: self.preferences.panel.mode,
+            pinned: self.pinned,
+            pin_available: cfg!(windows),
+            pin_failed: self.pin_failed,
+        }
+    }
+
+    pub fn present_mode(&mut self, mode: PanelMode, remember: bool) -> std::io::Result<()> {
+        if remember && self.preferences.panel.mode != mode {
+            let previous = self.preferences.panel.mode;
+            self.preferences.panel.mode = mode;
+            if let Err(error) = self.try_save() {
+                self.preferences.panel.mode = previous;
+                return Err(error);
+            }
+        }
+        self.presented_mode = mode;
+        Ok(())
+    }
+
+    pub fn apply_pin(&mut self, actual: bool, failed: bool) {
+        self.pinned = actual;
+        self.pin_failed = failed;
+    }
+
+    #[cfg(windows)]
+    pub fn remember_pin(&mut self, pinned: bool) -> std::io::Result<()> {
+        let previous = self.preferences.panel.pinned;
+        self.preferences.panel.pinned = pinned;
+        if let Err(error) = self.try_save() {
+            self.preferences.panel.pinned = previous;
+            return Err(error);
+        }
+        self.apply_pin(pinned, false);
+        Ok(())
+    }
+
+    pub fn remember_panel_geometry(&mut self, size: [u32; 2], position: Option<[i32; 2]>) {
+        let previous = self.preferences.panel;
+        let next = &mut self.preferences.panel;
+        match self.presented_mode {
+            PanelMode::Full => next.full_size = Some(size),
+            PanelMode::Compact => next.compact_size = Some(size),
+        }
+        if position.is_some() {
+            next.position = position;
+        }
+        if *next != previous && self.try_save().is_err() {
+            self.preferences.panel = previous;
+        }
     }
 
     /// Some collectors run faster or only while their module is visible.

@@ -65,6 +65,15 @@ export type SystemTheme = "dark" | "light";
 /** Persisted visual preferences; the system reduced-motion preference prevails. */
 export interface Appearance { theme: Theme; reduceMotion: boolean }
 
+export type PanelMode = "full" | "compact";
+export interface Presentation {
+  mode: PanelMode;
+  preferredMode: PanelMode;
+  pinned: boolean;
+  pinAvailable: boolean;
+  pinFailed: boolean;
+}
+
 export interface GeneralSettings {
   version: string;
   autostart: boolean;
@@ -82,6 +91,7 @@ export interface InitialState {
   /** First opening: Settings shows the welcome. */
   welcome?: boolean;
   appearance?: Appearance;
+  presentation?: Presentation;
   /** Desktop color scheme from the core; null when unknown. */
   systemTheme?: SystemTheme | null;
   /** Empty string targets Agents without identifying a particular session. */
@@ -135,6 +145,10 @@ export interface Core {
   /** Rejects when Trello refuses or cannot be reached. */
   moveTrelloCard?(card: string, list: string): Promise<void>;
   closePanel(): void;
+  setPanelMode?(mode: PanelMode, remember: boolean): Promise<Presentation>;
+  setPanelPinned?(pinned: boolean): Promise<Presentation>;
+  /** Local civil time represented as epoch milliseconds with the current UTC offset applied. */
+  panelClock?(): Promise<number>;
   listenSystemTheme?(cb: (theme: SystemTheme) => void): Promise<() => void>;
   /** The welcome was shown; it never opens again. */
   completeWelcome?(): void;
@@ -183,6 +197,9 @@ export const tauriCore: Core = {
   refreshGithub: () => void invoke("refresh_github"),
   openTrelloAdmin: () => void invoke("open_trello_admin"),
   closePanel: () => void invoke("close_panel"),
+  setPanelMode: (mode, remember) => invoke("set_panel_mode", { mode, remember }),
+  setPanelPinned: (pinned) => invoke("set_panel_pinned", { pinned }),
+  panelClock: () => invoke("panel_clock"),
   listenSystemTheme: (cb) => listen<SystemTheme>("system-theme", (e) => cb(e.payload)),
   completeWelcome: () => void invoke("complete_welcome"),
   listenGeneralSettings: (cb) => listen<GeneralSettings>("general-settings", (e) => cb(e.payload)),

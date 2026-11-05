@@ -22,6 +22,7 @@ pub struct InitialState {
     /// First opening: Settings shows the welcome.
     welcome: bool,
     appearance: crate::state::Appearance,
+    presentation: panel::Presentation,
     /// Desktop color scheme; None when the portal has not answered.
     system_theme: Option<crate::desktop_theme::SystemTheme>,
     agent_target: Option<String>,
@@ -48,6 +49,7 @@ pub fn initial_state(
         },
         welcome: state.welcome_pending(),
         appearance: state.appearance(),
+        presentation: state.presentation(),
         system_theme: theme.get(),
         agent_target: state.agent_target(),
         last_anchor: state.opening_anchor(),
@@ -73,6 +75,38 @@ pub fn choose_anchor(module: Module, state: State<Mutex<AppState>>) {
 #[tauri::command]
 pub fn close_panel(app: AppHandle) {
     panel::close(&app);
+}
+
+#[tauri::command]
+pub fn set_panel_mode(
+    app: AppHandle,
+    mode: panel::PanelMode,
+    remember: bool,
+) -> Result<panel::Presentation, &'static str> {
+    panel::set_mode(&app, mode, remember)
+}
+
+#[tauri::command]
+pub fn set_panel_pinned(app: AppHandle, pinned: bool) -> Result<panel::Presentation, &'static str> {
+    #[cfg(windows)]
+    {
+        panel::set_pinned(&app, pinned)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (app, pinned);
+        Err("unsupported")
+    }
+}
+
+#[tauri::command]
+pub fn panel_clock() -> i64 {
+    local_clock(&crate::ports::SystemClock)
+}
+
+fn local_clock(clock: &impl crate::ports::Clock) -> i64 {
+    let now = clock.now();
+    (now as i64).saturating_add(clock.utc_offset_ms(now))
 }
 
 #[tauri::command]

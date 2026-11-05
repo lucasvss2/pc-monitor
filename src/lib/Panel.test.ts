@@ -2,7 +2,7 @@ import { act, render, screen, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Panel from "./Panel.svelte";
-import type { Module, Core, Snapshot, InitialState } from "./core";
+import type { Module, Core, Snapshot, InitialState, PanelMode, Presentation } from "./core";
 import networkSpeed from "./network/fixtures/speed.json";
 import networkFull from "./network/fixtures/full.json";
 import notebook from "./system/fixtures/notebook.json";
@@ -81,6 +81,35 @@ const section = (name: string) => screen.getAllByRole("region", { name })[0];
 const settingsButton = () => screen.getByRole("button", { name: "Configurações" });
 
 describe("Compact panel", () => {
+  it("keeps pin and the local clock while expanding a summary temporarily", async () => {
+    const { core } = fakeCore();
+    let view: Presentation = { mode: "full", preferredMode: "full", pinned: false, pinAvailable: true, pinFailed: false };
+    const setPanelMode = vi.fn(async (mode: PanelMode, remember: boolean) => {
+      view = { ...view, mode, preferredMode: remember ? mode : view.preferredMode };
+      return view;
+    });
+    render(Panel, { core: {
+      ...core,
+      initialState: async () => ({ ...await core.initialState(), presentation: view }),
+      setPanelMode,
+      setPanelPinned: async (pinned: boolean) => (view = { ...view, pinned }),
+      panelClock: async () => Date.UTC(2026, 10, 5, 0, 0, 8),
+    } });
+    const user = userEvent.setup();
+    const clock = await screen.findByRole("group", { name: "Relógio do Painel" });
+    await screen.findByText("00:00:08 · 05/11/2026");
+    await user.click(await screen.findByRole("button", { name: "Manter no topo" }));
+    await user.click(screen.getByRole("button", { name: "Reduzir Painel" }));
+    expect(await screen.findByRole("button", { name: "Expandir Painel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Manter no topo" })).toHaveAttribute("aria-pressed", "true");
+    expect(clock).toBeVisible();
+    await user.click(within(screen.getByRole("region", { name: "Tarefas" })).getByRole("button"));
+    await user.click(await screen.findByRole("button", { name: "Voltar ao reduzido" }));
+    expect(await screen.findByRole("button", { name: "Expandir Painel" })).toBeInTheDocument();
+    expect(setPanelMode.mock.calls).toEqual([["compact", true], ["full", false], ["compact", false]]);
+    expect(clock).toHaveTextContent("00:00:08 · 05/11/2026");
+  });
+
   it("shows six independent modules with IA and Agents together and no redundant navigation", async () => {
     const { core } = fakeCore();
     render(Panel, { core });

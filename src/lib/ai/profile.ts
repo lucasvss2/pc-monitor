@@ -1,4 +1,14 @@
-import type { AiData, AiReading } from "../core";
+import type { AiData, AiReading, AiWindow } from "../core";
+
+export function restarted(window: AiWindow, now: number) {
+  return window.reset || (window.resetsAt !== null && window.resetsAt <= now);
+}
+
+/** An absent or restarted window has no known remaining allowance. */
+export function remainingPercent(window: AiWindow | null, now: number) {
+  if (!window || restarted(window, now) || window.usedPercent === null) return null;
+  return Math.max(0, Math.min(100, Math.round(100 - window.usedPercent)));
+}
 
 export function installed(provider: AiData["codex"] | AiData["claude"]): boolean {
   if (!provider) return false;

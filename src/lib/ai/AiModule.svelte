@@ -3,7 +3,7 @@
   import type { AiData, AiReading, AiWindow } from "../core";
   import { t, interpolate } from "../strings";
   import AbsentArea, { type Absence } from "../AbsentArea.svelte";
-  import { installed, usageWindows } from "./profile";
+  import { installed, remainingPercent, restarted, usageWindows } from "./profile";
 
   /** Renders the top of the "IA e Agentes" card: its shared heading and the AI instruments. */
   let { data, refresh, configure = () => {}, reconnect = () => {} }:
@@ -56,18 +56,9 @@
     return percent <= HIGH_USAGE_REMAINING ? `${remaining} · ${t.ai.high}` : remaining;
   }
 
-  function restarted(window: AiWindow) {
-    return window.reset || (window.resetsAt !== null && window.resetsAt <= now);
-  }
-
-  /** An absent or restarted window has no known remaining allowance. */
-  function remainingPercent(window: AiWindow | null) {
-    if (!window || restarted(window) || window.usedPercent === null) return null;
-    return Math.max(0, Math.min(100, Math.round(100 - window.usedPercent)));
-  }
   /** Why a window has no value: no reading, or restarted without a new one. */
   function missing(window: AiWindow | null) {
-    return !window || !restarted(window) || window.resetsAt === null
+    return !window || !restarted(window, now) || window.resetsAt === null
       ? t.ai.noReading : interpolate(t.ai.restarted, { time: clock.format(window.resetsAt) });
   }
 
@@ -207,8 +198,8 @@
       </section>
     {:else}
       {@const { five, week } = usageWindows(provider.reading)}
-      {@const fivePercent = remainingPercent(five)}
-      {@const weekPercent = remainingPercent(week)}
+      {@const fivePercent = remainingPercent(five, now)}
+      {@const weekPercent = remainingPercent(week, now)}
       {@const weeklyOnly = five === null && week !== null}
       <section class="provider" aria-label={provider.name} style:--instrument={provider.tone} data-stale={provider.old}>
         <div class="instrument">
