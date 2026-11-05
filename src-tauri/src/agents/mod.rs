@@ -363,8 +363,8 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
             self.notifications.observe(&self.sessions, &live, now);
             self.sessions = live;
         }
-        if polled && !failed {
-            self.last_success_at = Some(now);
+        if !failed {
+            self.last_success_at = polled.then_some(now);
         }
         self.data(failed)
     }
@@ -477,8 +477,10 @@ fn polling(
         let poller = Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock)
             .with_programs(crate::ports::SystemPrograms);
         #[cfg(target_os = "linux")]
-        let mut poller =
-            poller.with_codex(codex::Adapter::new(root, crate::ports::RootFilesystem::system()));
+        let mut poller = poller.with_codex(codex::Adapter::new(
+            root,
+            crate::ports::RootFilesystem::system(),
+        ));
         #[cfg(windows)]
         let mut poller = poller;
         #[cfg(windows)]
