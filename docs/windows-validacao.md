@@ -1,6 +1,6 @@
 # Validação da base Windows
 
-Este guia acompanha a base da [especificação](../.scratch/jira-windows/spec.md). O suporte ainda é experimental. Limites de IA, Rede e Sistema têm coletores Windows, com aceite gráfico separado. Agentes consulta periodicamente as sessões registradas pelo CLI nativo do Codex. A validação do Claude em conta real e a validação de Tarefas/Jira têm roteiros próprios em [Limites de IA Windows](ia-windows-validacao.md) e [Validação de Tarefas](tarefas-validacao.md). Painel reduzido e geometrias continuam no plano aprovado.
+Este guia acompanha a base da [especificação](../.scratch/jira-windows/spec.md). O suporte ainda é experimental. Limites de IA, Rede e Sistema têm coletores Windows, com aceite gráfico separado. Agentes consulta periodicamente as sessões registradas pelo CLI nativo do Codex. A validação do Claude em conta real e a validação de Tarefas/Jira têm roteiros próprios em [Limites de IA Windows](ia-windows-validacao.md) e [Validação de Tarefas](tarefas-validacao.md). A prova nativa do modo reduzido, da fixação e do relógio está registrada abaixo.
 
 ## Verificações automáticas
 
@@ -31,6 +31,7 @@ Registrar versão de SO/app, cenário, resultado e limitação sem valores priva
 5. Com outra Âncora salva, fechar o Painel e clicar no banner: abre Agentes sem mudar a Âncora. Repetir deixando a notificação ir à Central antes do clique. Conferir também processo reiniciado, políticas de notificação e Não Incomodar. Testar entrega e clique separadamente: callback COM unitário não comprova esses cenários.
 6. Suspender/retomar e alternar conectividade, sem duplicar instâncias ou retomar respostas obsoletas. No Ubuntu, repetir os cenários existentes de SNI, foco e notificação.
 7. Conferir CPU, RAM, disco e bateria quando presente. Em Rede, conferir a conexão ativa, latência, taxas de subida e descida e disponibilidade do teste de velocidade. Após reconectar ou retomar, conferir se as taxas retomam com uma nova amostra. Em conexão limitada, conferir se o teste de velocidade fica indisponível.
+8. Alternar modos, fixar em um deles, conferir o relógio nos dois e abrir Configurações e detalhes temporariamente a partir do reduzido. Fechar e reiniciar o processo para verificar tamanho, posição, modo e fixação lembrados.
 
 Se entrega/ativação falharem, manter a etapa pendente e investigar o adaptador. EXE sem assinatura não tem execução garantida por toda política do Windows. Não desativar proteções, remover marca de origem ou instalar confiança artificial para passar o aceite.
 
@@ -51,3 +52,9 @@ A ativação COM dentro do processo não comprovou abertura com o processo encer
 Na sessão de cffd77f, após uma abertura normal pelo menu Iniciar, a consulta de suporte ao protocolo passou a disponível; os processos iniciados pelas ferramentas haviam produzido resultados divergentes. Não tratar a consulta/execução no contexto restrito das ferramentas como prova de ativação gráfica. O usuário confirmou banner e Central abrindo Agentes, inclusive com processo encerrado, com Âncora diferente preservada e uma única instância. Hooks foram reconectados e depois desligados pelo usuário; a reversão corresponde ao estado inicial. Início automático ligou/desligou sem erro em 8f92ec1, ficando desligado, e o relançamento --autostart manteve uma instância e nenhum Painel. Logon real, eventos reais das CLIs, regressão gráfica Ubuntu e instalador continuam separados dessas provas.
 
 Ao encerrar esta rodada, hooks foram desligados por clique, configurações anteriores verificadas, alertas do monitor limpos, Âncora restaurada, app encerrado e atalho/associações/artefatos temporários removidos. Reconexão e suspensão/retomada ficaram pendentes por escolha do usuário. Não Incomodar/políticas de entrega, logon real, eventos reais das CLIs, regressão gráfica Ubuntu e instalador ainda não têm aceite gráfico nesta rodada. Nenhuma proteção foi alterada.
+
+## Painel reduzido, fixação e relógio
+
+Em 05/11/2026, a [CI de `60b39df`](https://github.com/lucasvss2/pc-monitor/actions/runs/42112352033) passou nos dois alvos, com 280 testes Rust Windows. A prévia do Núcleo de IA a 380 px lógicos mostrou os resumos e o relógio sem rolagem horizontal. A formatação foi conferida com datas sintéticas, incluindo meia-noite e virada do ano.
+
+O EXE experimental autorizado abriu no Windows 11. Na janela nativa, Reduzir e Expandir mudaram a geometria. O relógio avançou e coincidiu com a hora local do Windows nos dois modos. Manter no topo alterou o estado nativo e seguiu ativo nas expansões temporárias para Configurações e Tarefas. Configurações voltou ao reduzido, e a navegação por Tarefas preservou o modo preferido. Após fechar e reiniciar o processo, o reduzido, a fixação, o tamanho e a posição foram restaurados. A recuperação com monitor ausente e DPI diferente foi exercitada em teste sintético. O modo completo e a fixação desligada foram restaurados ao final, com a nova versão em execução. Prévia, formatador temporário e EXE anterior foram removidos.
