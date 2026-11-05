@@ -1,6 +1,6 @@
 # Validação da base Windows
 
-Este guia acompanha a base da [especificação](../.scratch/jira-windows/spec.md). Ainda não é suporte oficial Windows completo. Limites de IA, Rede e Sistema permanecem explicitamente indisponíveis; descoberta completa de CLIs e status line Windows continuam na adaptação. Tarefas/Jira foi implementado, com conexão/leitura/troca confirmadas em um recorte assistido descrito em [Validação de Tarefas](tarefas-validacao.md); esse resultado não encerra os demais critérios. Painel reduzido e geometrias continuam no plano aprovado.
+Este guia acompanha a base da [especificação](../.scratch/jira-windows/spec.md). O suporte ainda é experimental. Limites de IA, Rede e Sistema têm coletores Windows, com aceite gráfico separado. A consulta periódica do Codex continua pendente. A validação do Claude em conta real e a validação de Tarefas/Jira têm roteiros próprios em [Limites de IA Windows](ia-windows-validacao.md) e [Validação de Tarefas](tarefas-validacao.md). Painel reduzido e geometrias continuam no plano aprovado.
 
 ## Verificações automáticas
 
@@ -14,7 +14,9 @@ A CI repete o teste do hook com o executável de release que usa subsistema GUI,
 
 O runner `windows-2025` comprova execução das APIs no Windows do runner. Não substitui uma sessão gráfica em Windows 11 x64 nem aceite Ubuntu/GNOME/Wayland. Depois das verificações, o workflow oferece um executável experimental sem assinatura como artefato temporário, sem publicar release.
 
-Durante este incremento, os coletores ainda inativos no Windows e suas portas preservadas têm exceções localizadas somente para `dead_code`, com motivo no código. A CI conserva `-D warnings` para os demais lints e continua verificando Ubuntu integralmente. Remover essas exceções ao ativar os coletores nas próximas etapas; elas não validam suporte às fontes ausentes.
+As métricas nativas têm provas de CPU, RAM, disco fixo, rota ativa e ICMP em loopback. Temperatura, segurança avançada da rede e tráfego por aplicativo têm indicação de indisponibilidade no Painel Windows. A ausência de bateria é diferenciada de erro de leitura. Os adaptadores avançados exclusivos do Linux ainda têm exceções localizadas para `dead_code` no Windows.
+
+Na revisão `e3eada5`, a [CI de Rede e Sistema](https://github.com/lucasvss2/pc-monitor/actions/runs/42089152550) concluiu os dois alvos e gerou o EXE experimental. No Windows, 277 testes Rust passaram, incluindo os testes de métricas nativas e retomada de Sistema sem internet. A prévia do Painel usou dados sintéticos. Reconexão, suspensão física e aceite gráfico desta revisão continuam pendentes.
 
 ## Aceite em sessão gráfica
 
@@ -26,6 +28,7 @@ Registrar versão de SO/app, cenário, resultado e limitação sem valores priva
 4. Gerar evento de atenção de exemplo. Notificações mostram apenas fonte/evento/estado/duração; nomes de projeto/sessão e conteúdo ficam fora do texto e dos argumentos de ativação.
 5. Com outra Âncora salva, fechar o Painel e clicar no banner: abre Agentes sem mudar a Âncora. Repetir deixando a notificação ir à Central antes do clique. Conferir também processo reiniciado, políticas de notificação e Não Incomodar. Testar entrega e clique separadamente: callback COM unitário não comprova esses cenários.
 6. Suspender/retomar e alternar conectividade, sem duplicar instâncias ou retomar respostas obsoletas. No Ubuntu, repetir os cenários existentes de SNI, foco e notificação.
+7. Conferir CPU, RAM, disco e bateria quando presente. Em Rede, conferir a conexão ativa, latência, taxas de subida e descida e disponibilidade do teste de velocidade. Após reconectar ou retomar, conferir se as taxas retomam com uma nova amostra. Em conexão limitada, conferir se o teste de velocidade fica indisponível.
 
 Se entrega/ativação falharem, manter a etapa pendente e investigar o adaptador. EXE sem assinatura não tem execução garantida por toda política do Windows. Não desativar proteções, remover marca de origem ou instalar confiança artificial para passar o aceite.
 
