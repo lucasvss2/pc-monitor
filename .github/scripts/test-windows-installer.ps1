@@ -42,7 +42,7 @@ function Invoke-StandardUserTest {
         "HKLM:\Software\WOW6432Node\Microsoft\EdgeUpdate\Clients\$webviewClient"
         "HKCU:\Software\Microsoft\EdgeUpdate\Clients\$webviewClient"
     ) | Where-Object {
-        $version = Get-ItemPropertyValue -LiteralPath $_ -Name 'pv' -ErrorAction SilentlyContinue
+        $version = (Get-ItemProperty -LiteralPath $_ -ErrorAction SilentlyContinue).pv
         $version -and $version -ne '0.0.0.0'
     }
     Write-Output "WebView2 present before setup: $([bool]$webviewPresent)"
@@ -58,7 +58,7 @@ function Invoke-StandardUserTest {
     }
     Assert (!(Test-Path -LiteralPath "HKLM:\$uninstallKey")) 'Found an unexpected machine-wide install'
     Assert ($entry.UninstallString -and $entry.UninstallString.Trim('"') -eq $uninstaller) 'Wrong uninstall command'
-    Assert (!(Get-ItemPropertyValue -LiteralPath $runKey -Name $name -ErrorAction SilentlyContinue)) 'Installation enabled automatic startup'
+    Assert (!(Get-ItemProperty -LiteralPath $runKey -ErrorAction SilentlyContinue).$name) 'Installation enabled automatic startup'
 
     $link = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$name.lnk"
     $desktopLink = Join-Path $userProfile "Desktop\$name.lnk"
@@ -92,7 +92,7 @@ function Invoke-StandardUserTest {
     foreach ($path in @($directory, $link, $desktopLink, "HKCU:\$uninstallKey", $protocolKey, $comKey, $identityKey)) {
         Assert (!(Test-Path -LiteralPath $path)) 'Uninstall left an installation file, shortcut, or registration'
     }
-    Assert (!(Get-ItemPropertyValue -LiteralPath $runKey -Name $name -ErrorAction SilentlyContinue)) 'Uninstall left automatic startup registered'
+    Assert (!(Get-ItemProperty -LiteralPath $runKey -ErrorAction SilentlyContinue).$name) 'Uninstall left automatic startup registered'
     Assert ((Get-FileHash -LiteralPath $preferences).Hash -eq $preferencesHash) 'Uninstall changed preferences'
     Assert ((Get-Content -LiteralPath $hooks -Raw).Trim() -eq '{"hooks":{}}') 'Uninstall modified third-party agent settings'
 
