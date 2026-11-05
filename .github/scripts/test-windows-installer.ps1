@@ -26,6 +26,7 @@ function Invoke-StandardUserTest {
     $env:APPDATA = Join-Path $userProfile 'AppData\Roaming'
     $env:TEMP = Join-Path $env:LOCALAPPDATA 'Temp'
     $env:TMP = $env:TEMP
+    $env:PSModulePath = Join-Path $PSHOME 'Modules'
     New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 
     $installer = Join-Path $PSScriptRoot 'setup.exe'
@@ -53,9 +54,8 @@ function Invoke-StandardUserTest {
     Assert ($directory -eq (Join-Path $env:LOCALAPPDATA $name)) 'Install directory is outside the standard user profile'
     $app = Join-Path $directory "$name.exe"
     $uninstaller = Join-Path $directory 'uninstall.exe'
-    foreach ($binary in @($app, $uninstaller)) {
-        Assert ((Get-AuthenticodeSignature -LiteralPath $binary).Status -eq 'NotSigned') 'Expected an unsigned executable'
-    }
+    Copy-Item -LiteralPath $app -Destination (Join-Path $PSScriptRoot 'installed.exe')
+    Copy-Item -LiteralPath $uninstaller -Destination (Join-Path $PSScriptRoot 'uninstall.exe')
     Assert (!(Test-Path -LiteralPath "HKLM:\$uninstallKey")) 'Found an unexpected machine-wide install'
     Assert ($entry.UninstallString -and $entry.UninstallString.Trim('"') -eq $uninstaller) 'Wrong uninstall command'
     Assert (!(Get-ItemProperty -LiteralPath $runKey -ErrorAction SilentlyContinue).$name) 'Installation enabled automatic startup'
@@ -147,6 +147,10 @@ try {
     $log = Join-Path $directory 'result.log'
     if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log }
     Assert ($process.ExitCode -eq 0) 'The standard-user installer test failed'
+    foreach ($binary in 'installed.exe', 'uninstall.exe') {
+        $status = (Get-AuthenticodeSignature -LiteralPath (Join-Path $directory $binary)).Status
+        Assert ($status -eq 'NotSigned') 'Expected an unsigned installed executable and uninstaller'
+    }
 } finally {
     if ($account) {
         try {
