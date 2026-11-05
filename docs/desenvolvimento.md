@@ -154,10 +154,12 @@ Para compilar nativamente, use MSVC x64 com Windows SDK, Rust estável, Node.js 
 npm ci
 npm run check
 npm test
-npm run tauri -- build --no-bundle
+npm run tauri -- build --bundles nsis
 ```
 
-O build acima gera o executável; não publica release nem instalador. A configuração Windows seleciona NSIS por usuário para o empacotamento posterior. Sem cofre nativo real, o app recusa salvar credenciais. A prova explícita do cofre usa somente uma entrada sintética isolada e a remove ao terminar:
+O build gera o EXE portátil em `src-tauri/target/release/` e o instalador em `src-tauri/target/release/bundle/nsis/`. Use `--no-bundle` para compilar apenas o portátil. A CI oferece o instalador experimental sem assinatura no artefato `windows-x64-installer-unsigned`. O instalador usa o perfil do usuário e baixa o bootstrapper da Microsoft quando o WebView2 está ausente. Consulte a [validação Windows](windows-validacao.md#instalador-exe-por-usuário) para instalar e remover.
+
+Sem cofre nativo real, o app recusa salvar credenciais. A prova explícita do cofre usa somente uma entrada sintética isolada e a remove ao terminar:
 
 ```powershell
 cargo test --locked --manifest-path src-tauri/Cargo.toml native_vault_roundtrip_is_local_machine_and_cleanup_is_idempotent -- --ignored

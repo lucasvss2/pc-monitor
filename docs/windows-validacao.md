@@ -20,6 +20,16 @@ Na revisão `e3eada5`, a [CI de Rede e Sistema](https://github.com/lucasvss2/pc-
 
 Em 05/11/2026, o EXE sem assinatura `e3eada5` (SHA-256 iniciado por `32CD2973`) abriu após autorização em Windows 11. O Painel mostrou conexão cabeada, latência, taxas de tráfego e o resultado do teste automático de velocidade. CPU e tráfego mudaram entre observações. RAM e disco apareceram com leituras reais, ausência de bateria e temperatura indisponível foram indicadas, e o perfil de IA mostrou apenas Codex com a janela semanal em destaque. O teste manual de velocidade, a reconexão e a suspensão física seguem pendentes. A cópia temporária anterior foi removida depois de conferir a instância ativa e as referências do Windows.
 
+## Instalador EXE por usuário
+
+1. Baixe o artefato `windows-x64-installer-unsigned` da CI do projeto e extraia o EXE `*-setup.exe`. Execute na sua conta comum. O NSIS instala em `%LOCALAPPDATA%` e cria um atalho no menu Iniciar. A inicialização com o login continua opcional.
+2. Se o WebView2 estiver ausente, o instalador baixa e executa o bootstrapper oficial da Microsoft. Esse primeiro download requer internet. A política de execução do Windows pode bloquear o EXE sem assinatura.
+3. Para remover o monitor, restaure a linha de status do Claude Code e desligue a **Detecção instantânea** nas Configurações se tiver ativado esses recursos. Depois abra **Configurações do Windows → Aplicativos → Aplicativos instalados → kvojps-monitor → Desinstalar**.
+
+Por padrão, a remoção preserva as preferências e as credenciais no cofre. Ela remove os arquivos do programa, atalhos e registros de ativação e inicialização que apontam para a instalação. WebView2 é compartilhado entre aplicativos e continua instalado.
+
+A CI usa uma conta padrão descartável no runner `windows-2025`. O teste exercita instalação silenciosa, reexecução do instalador, abertura do executável instalado e desinstalação, com conferência de arquivos, atalhos e registro. Essa conta só existe na VM de CI.
+
 ## Aceite em sessão gráfica
 
 Registrar versão de SO/app, cenário, resultado e limitação sem valores privados ou capturas brutas. Usar sessões/projetos de exemplo e seguir [sanitização](agents/sanitizacao.md).

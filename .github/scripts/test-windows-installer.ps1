@@ -40,7 +40,11 @@ function Invoke-StandardUserTest {
     Invoke-Installer $installer
     $entry = Get-ItemProperty -LiteralPath "HKCU:\$uninstallKey"
     $directory = $entry.InstallLocation.Trim('"')
-    Assert ($directory.StartsWith("$env:LOCALAPPDATA\", [StringComparison]::OrdinalIgnoreCase)) 'Install directory is outside LocalAppData'
+    # Start-Process -Credential can inherit the runner's environment.
+    $localAppData = [Environment]::GetFolderPath('LocalApplicationData')
+    $roamingAppData = [Environment]::GetFolderPath('ApplicationData')
+    $userProfile = [Environment]::GetFolderPath('UserProfile')
+    Assert ($localAppData -and $directory.StartsWith("$localAppData\", [StringComparison]::OrdinalIgnoreCase)) 'Install directory is outside LocalAppData'
     $app = Join-Path $directory "$name.exe"
     $uninstaller = Join-Path $directory 'uninstall.exe'
     foreach ($binary in @($app, $uninstaller)) {
@@ -73,11 +77,10 @@ function Invoke-StandardUserTest {
         if (!$appProcess.HasExited) { Stop-Process -Id $appProcess.Id; $appProcess.WaitForExit() }
     }
 
-    # Synthetic markers exercise preservation without using real preferences or agent settings.
-    $data = New-Item -ItemType Directory -Path (Join-Path $env:APPDATA $bundleId) -Force
-    $marker = Join-Path $data.FullName 'installer-test.txt'
-    Set-Content -LiteralPath $marker 'synthetic preferences'
-    $codex = New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE '.codex') -Force
+    # The installed application wrote first-run preferences in the isolated profile.
+    $preferences = Join-Path $roamingAppData "$name\preferencias.json"
+    $preferencesHash = (Get-FileHash -LiteralPath $preferences).Hash
+    $codex = New-Item -ItemType Directory -Path (Join-Path $userProfile '.codex') -Force
     $hooks = Join-Path $codex.FullName 'hooks.json'
     Set-Content -LiteralPath $hooks '{"hooks":{}}'
     if (!(Test-Path -LiteralPath $runKey)) { New-Item -Path $runKey | Out-Null }
@@ -85,14 +88,14 @@ function Invoke-StandardUserTest {
     Set-ItemProperty -LiteralPath $runKey -Name $name -Value $startupCommand
 
     Invoke-Installer $installer
-    Assert ((Get-Content -LiteralPath $marker -Raw).Trim() -eq 'synthetic preferences') 'Reinstall removed preferences'
+    Assert ((Get-FileHash -LiteralPath $preferences).Hash -eq $preferencesHash) 'Reinstall changed preferences'
     Assert ((Get-ItemPropertyValue -LiteralPath $runKey -Name $name) -eq $startupCommand) 'Reinstall removed automatic startup preference'
     Invoke-Installer $uninstaller
     foreach ($path in @($directory, $link, $desktopLink, "HKCU:\$uninstallKey", $protocolKey, $comKey, $identityKey)) {
         Assert (!(Test-Path -LiteralPath $path)) 'Uninstall left an installation file, shortcut, or registration'
     }
     Assert (!(Get-ItemPropertyValue -LiteralPath $runKey -Name $name -ErrorAction SilentlyContinue)) 'Uninstall left automatic startup registered'
-    Assert ((Get-Content -LiteralPath $marker -Raw).Trim() -eq 'synthetic preferences') 'Uninstall removed preferences'
+    Assert ((Get-FileHash -LiteralPath $preferences).Hash -eq $preferencesHash) 'Uninstall changed preferences'
     Assert ((Get-Content -LiteralPath $hooks -Raw).Trim() -eq '{"hooks":{}}') 'Uninstall modified third-party agent settings'
 
     Invoke-Installer $installer
@@ -139,13 +142,20 @@ try {
     $credential = [PSCredential]::new(".\$accountName", $password)
     $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     $process = Start-Process -FilePath $powershell -Credential $credential -LoadUserProfile -WorkingDirectory $directory -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File `"$script`" -StandardUser" -PassThru
-    Assert ($process.WaitForExit(240000)) 'The standard-user installer test timed out'
-    Get-Content -LiteralPath (Join-Path $directory 'result.log')
+    if (!$process.WaitForExit(240000)) {
+        Stop-Process -Id $process.Id
+        throw 'The standard-user installer test timed out'
+    }
+    $log = Join-Path $directory 'result.log'
+    if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log }
     Assert ($process.ExitCode -eq 0) 'The standard-user installer test failed'
 } finally {
     if ($account) {
-        Get-CimInstance Win32_UserProfile -Filter "SID='$($account.SID.Value)'" | Remove-CimInstance
-        Remove-LocalUser -SID $account.SID
+        try {
+            Get-CimInstance Win32_UserProfile -Filter "SID='$($account.SID.Value)'" | Remove-CimInstance
+        } finally {
+            Remove-LocalUser -SID $account.SID
+        }
     }
     if (Test-Path -LiteralPath $directory) {
         $resolved = Get-Item -LiteralPath $directory

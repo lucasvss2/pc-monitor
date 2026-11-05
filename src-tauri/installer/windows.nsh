@@ -1,7 +1,7 @@
 !define MONITOR_PROTOCOL "Software\Classes\kvojps-monitor"
 !define MONITOR_ACTIVATOR "{57165877-A42D-4FF3-A2D9-B8B94EF32F09}"
 !define MONITOR_COM "Software\Classes\CLSID\${MONITOR_ACTIVATOR}"
-!define MONITOR_IDENTITY "Software\Classes\AppUserModelId\${BUNDLEID}"
+!define MONITOR_IDENTITY "Software\Classes\AppUserModelId"
 !define MONITOR_RUN "Software\Microsoft\Windows\CurrentVersion\Run"
 
 Var OtherStartupCommand
@@ -33,11 +33,11 @@ Var OtherStartupCommand
     ${If} $0 == '$\"$INSTDIR\${MAINBINARYNAME}.exe$\" --toast-activate'
       DeleteRegKey HKCU "${MONITOR_COM}\LocalServer32"
       DeleteRegKey /ifempty HKCU "${MONITOR_COM}"
-      ReadRegStr $0 HKCU "${MONITOR_IDENTITY}" "CustomActivator"
+      ReadRegStr $0 HKCU "${MONITOR_IDENTITY}\${BUNDLEID}" "CustomActivator"
       ${If} $0 == "${MONITOR_ACTIVATOR}"
-        DeleteRegValue HKCU "${MONITOR_IDENTITY}" "CustomActivator"
-        DeleteRegValue HKCU "${MONITOR_IDENTITY}" "DisplayName"
-        DeleteRegKey /ifempty HKCU "${MONITOR_IDENTITY}"
+        DeleteRegValue HKCU "${MONITOR_IDENTITY}\${BUNDLEID}" "CustomActivator"
+        DeleteRegValue HKCU "${MONITOR_IDENTITY}\${BUNDLEID}" "DisplayName"
+        DeleteRegKey /ifempty HKCU "${MONITOR_IDENTITY}\${BUNDLEID}"
       ${EndIf}
     ${EndIf}
 
