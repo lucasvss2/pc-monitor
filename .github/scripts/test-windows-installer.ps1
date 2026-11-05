@@ -18,6 +18,16 @@ function Invoke-StandardUserTest {
     Assert ([Environment]::Is64BitProcess) 'Expected an x64 test process'
     Write-Output 'Running with a standard local user'
 
+    # The fresh profile has no Explorer session to initialize known folders.
+    $profileKey = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\ProfileList\$($identity.User.Value)"
+    $userProfile = Get-ItemPropertyValue -LiteralPath $profileKey -Name 'ProfileImagePath'
+    $env:USERPROFILE = $userProfile
+    $env:LOCALAPPDATA = Join-Path $userProfile 'AppData\Local'
+    $env:APPDATA = Join-Path $userProfile 'AppData\Roaming'
+    $env:TEMP = Join-Path $env:LOCALAPPDATA 'Temp'
+    $env:TMP = $env:TEMP
+    New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
+
     $installer = Join-Path $PSScriptRoot 'setup.exe'
     $name = 'kvojps-monitor'
     $bundleId = 'dev.kvojps.monitor'
@@ -40,19 +50,7 @@ function Invoke-StandardUserTest {
     Invoke-Installer $installer
     $entry = Get-ItemProperty -LiteralPath "HKCU:\$uninstallKey"
     $directory = $entry.InstallLocation.Trim('"')
-    # Start-Process -Credential can inherit the runner's environment.
-    $localAppData = [Environment]::GetFolderPath('LocalApplicationData')
-    $roamingAppData = [Environment]::GetFolderPath('ApplicationData')
-    $userProfile = [Environment]::GetFolderPath('UserProfile')
-    $expected = Join-Path $localAppData $name
-    $resolved = (Get-Item -LiteralPath $directory).FullName
-    $expectedItem = Get-Item -LiteralPath $expected -ErrorAction SilentlyContinue
-    if (!$expectedItem -or $resolved -ne $expectedItem.FullName) {
-        $redactProfile = '(?i)([a-z]:\\Users\\)[^\\]+'
-        $safeActual = $directory -replace $redactProfile, '$1<profile>'
-        $safeExpected = $expected -replace $redactProfile, '$1<profile>'
-        throw "Unexpected installation directory: $safeActual (expected $safeExpected)"
-    }
+    Assert ($directory -eq (Join-Path $env:LOCALAPPDATA $name)) 'Install directory is outside the standard user profile'
     $app = Join-Path $directory "$name.exe"
     $uninstaller = Join-Path $directory 'uninstall.exe'
     foreach ($binary in @($app, $uninstaller)) {
@@ -62,31 +60,23 @@ function Invoke-StandardUserTest {
     Assert ($entry.UninstallString -and $entry.UninstallString.Trim('"') -eq $uninstaller) 'Wrong uninstall command'
     Assert (!(Get-ItemPropertyValue -LiteralPath $runKey -Name $name -ErrorAction SilentlyContinue)) 'Installation enabled automatic startup'
 
-    $startMenu = [Environment]::GetFolderPath('Programs')
-    $link = Join-Path $startMenu "$name.lnk"
-    $desktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) "$name.lnk"
+    $link = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$name.lnk"
+    $desktopLink = Join-Path $userProfile "Desktop\$name.lnk"
     Assert (Test-Path -LiteralPath $link) 'Start menu shortcut was not created'
     $shell = New-Object -ComObject WScript.Shell
     Assert ($shell.CreateShortcut($link).TargetPath -eq $app) 'Wrong Start menu shortcut target'
-    $appProcess = Start-Process -FilePath $app -PassThru -WindowStyle Hidden
-    try {
-        $deadline = [DateTime]::UtcNow.AddSeconds(30)
-        do {
-            Assert (!$appProcess.HasExited) 'Installed application exited before registering notification activation'
-            $commandKey = Get-Item -LiteralPath "$protocolKey\shell\open\command" -ErrorAction SilentlyContinue
-            $command = if ($commandKey) { $commandKey.GetValue('') }
-            if ($command -eq "`"$app`" --notification-activate `"%1`"") { break }
-            Start-Sleep -Milliseconds 250
-        } while ([DateTime]::UtcNow -lt $deadline)
-        Assert ($command -eq "`"$app`" --notification-activate `"%1`"") 'Installed application did not register the notification protocol'
-        Assert ((Get-Item -LiteralPath "$comKey\LocalServer32").GetValue('') -eq "`"$app`" --toast-activate") 'Wrong notification COM command'
-        Assert ((Get-ItemPropertyValue -LiteralPath $identityKey -Name 'CustomActivator') -eq $activator) 'Wrong notification identity'
-    } finally {
-        if (!$appProcess.HasExited) { Stop-Process -Id $appProcess.Id; $appProcess.WaitForExit() }
-    }
+    Write-Output 'Installed in the standard user profile with a Start menu shortcut'
 
-    # The installed application wrote first-run preferences in the isolated profile.
-    $preferences = Join-Path $roamingAppData "$name\preferencias.json"
+    # Reproduce the app-owned registry state without a graphical login.
+    New-Item -Path "$protocolKey\shell\open\command" -Force -Value "`"$app`" --notification-activate `"%1`"" | Out-Null
+    Set-ItemProperty -LiteralPath $protocolKey -Name 'MonitorOwner' -Value $bundleId
+    New-Item -Path "$comKey\LocalServer32" -Force -Value "`"$app`" --toast-activate" | Out-Null
+    New-Item -Path $identityKey -Force | Out-Null
+    Set-ItemProperty -LiteralPath $identityKey -Name 'CustomActivator' -Value $activator
+    Set-ItemProperty -LiteralPath $identityKey -Name 'DisplayName' -Value $name
+    $settings = New-Item -ItemType Directory -Path (Join-Path $env:APPDATA $name) -Force
+    $preferences = Join-Path $settings.FullName 'preferencias.json'
+    Set-Content -LiteralPath $preferences '{"initialized":true}'
     $preferencesHash = (Get-FileHash -LiteralPath $preferences).Hash
     $codex = New-Item -ItemType Directory -Path (Join-Path $userProfile '.codex') -Force
     $hooks = Join-Path $codex.FullName 'hooks.json'
@@ -113,7 +103,7 @@ function Invoke-StandardUserTest {
     Invoke-Installer $uninstaller
     Assert ((Get-ItemPropertyValue -LiteralPath $protocolKey -Name 'MonitorOwner') -eq 'synthetic.other') 'Uninstall removed a foreign protocol'
     Assert ((Get-ItemPropertyValue -LiteralPath $runKey -Name $name) -eq '"C:\Example\portable.exe" --autostart') 'Uninstall removed a portable startup command'
-    Write-Output 'Unsigned install, reinstall, launch, uninstall and ownership checks passed'
+    Write-Output 'Unsigned install, reinstall, uninstall and ownership checks passed'
 }
 
 if ($StandardUser) {

@@ -28,7 +28,7 @@ Em 05/11/2026, o EXE sem assinatura `e3eada5` (SHA-256 iniciado por `32CD2973`) 
 
 Por padrão, a remoção preserva as preferências e as credenciais no cofre. Ela remove os arquivos do programa, atalhos e registros de ativação e inicialização que apontam para a instalação. WebView2 é compartilhado entre aplicativos e continua instalado.
 
-A CI usa uma conta padrão descartável no runner `windows-2025`. O teste exercita instalação silenciosa, reexecução do instalador, abertura do executável instalado e desinstalação, com conferência de arquivos, atalhos e registro. Essa conta só existe na VM de CI.
+A CI usa uma conta padrão descartável no runner `windows-2025`. O teste exercita instalação silenciosa, reexecução do instalador e desinstalação, com conferência de arquivos, atalhos e registros de exemplo que reproduzem o estado criado pelo app. Essa conta só existe na VM de CI.
 
 ## Aceite em sessão gráfica
 
