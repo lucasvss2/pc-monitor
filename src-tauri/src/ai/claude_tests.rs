@@ -402,6 +402,7 @@ fn a_status_line_update_publishes_both_windows_with_the_plan() {
     assert_eq!(
         claude.data(),
         json!({
+            "installed": true,
             "state": "ready",
             "plan": "pro",
             "statusLine": "connected",
@@ -429,7 +430,7 @@ fn without_a_reading_the_module_asks_for_a_claude_code_session() {
     claude.step(false);
     assert_eq!(
         claude.data(),
-        json!({"state": "empty", "plan": "pro", "statusLine": "connected", "usage": "off", "reading": null})
+        json!({"installed": true, "state": "empty", "plan": "pro", "statusLine": "connected", "usage": "off", "reading": null})
     );
 }
 
@@ -780,6 +781,7 @@ mod usage {
         assert_eq!(
             claude.data(),
             json!({
+                "installed": true,
                 "state": "ready",
                 "plan": "pro",
                 "statusLine": "off",
