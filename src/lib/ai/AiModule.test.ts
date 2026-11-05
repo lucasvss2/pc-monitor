@@ -396,7 +396,7 @@ describe("automatic composition without a reading", () => {
     render(AiModule, { data: failure as AiData, refresh: vi.fn() });
     expect(area("Codex")).toBeNull();
     expect(provider("Codex")).toHaveAttribute("data-stale", "true");
-    expect(provider("Claude")).not.toHaveAttribute("data-stale", "true");
+    expect(screen.queryByRole("region", { name: "Claude" })).not.toBeInTheDocument();
   });
 });
 
