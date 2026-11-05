@@ -77,6 +77,17 @@ describe("System module", () => {
     expect(group("Temperatura · sem sensor")).not.toHaveTextContent("°C");
   });
 
+  it("distinguishes Windows capabilities from missing hardware", () => {
+    const data = { ...missing.data, disks: [], unavailableMetrics: ["temperature", "swap", "battery", "storage"] } as SystemData;
+    render(SystemModule, { data, updatedAt: missing.updatedAt });
+
+    expect(meter("RAM")).toBeInTheDocument();
+    expect(group("Temperatura · coleta indisponível no Windows")).toHaveTextContent("—");
+    expect(screen.queryByText(/swap/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Bateria · leitura indisponível")).toBeInTheDocument();
+    expect(screen.getByText("Armazenamento · leitura indisponível")).toBeInTheDocument();
+  });
+
   it("explains missing sensor, swap and battery together", () => {
     renderSnapshot(missing as Snapshot);
 

@@ -4,32 +4,25 @@ pub(crate) mod battery;
 mod readings;
 
 use std::collections::VecDeque;
-use std::sync::mpsc::Sender;
-#[cfg(target_os = "linux")]
-use std::sync::mpsc::{self, RecvTimeoutError};
-#[cfg(target_os = "linux")]
+use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::thread;
-#[cfg(target_os = "linux")]
 use std::time::Duration;
 
 use serde::Serialize;
-#[cfg(target_os = "linux")]
 use tauri::AppHandle;
 
 use crate::module::Module;
-use crate::ports::{Clock, Files};
-#[cfg(target_os = "linux")]
-use crate::ports::{RootFilesystem, SystemClock};
-#[cfg(target_os = "linux")]
+use crate::ports::{Clock, SystemClock};
 use crate::snapshot;
 use crate::snapshot::Snapshot;
 use battery::Battery;
 #[cfg(test)]
 use battery::BatteryState;
-pub use battery::UPower;
 #[cfg(target_os = "linux")]
 use battery::UPowerDbus;
-use readings::{Disk, Jiffies, Memory, Temperature};
+#[cfg(any(target_os = "linux", test))]
+use readings::LinuxReadings;
+pub(crate) use readings::{Disk, Jiffies, Memory, Readings, Temperature};
 
 const CPU_INTERVAL: u64 = 2_000;
 const DISK_INTERVAL: u64 = 30_000;
@@ -45,6 +38,19 @@ pub struct SystemData {
     pub disks: Vec<Disk>,
     /// None without a battery.
     pub battery: Option<Battery>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub unavailable_metrics: Vec<Metric>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Metric {
+    #[cfg(windows)]
+    Temperature,
+    #[cfg(windows)]
+    Swap,
+    Storage,
+    Battery,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -58,35 +64,37 @@ pub struct Cpu {
 }
 
 /// System collector. The background loop calls step when the deadline expires.
-pub struct System<A, U, R> {
-    files: A,
-    upower: U,
+pub struct System<S, R> {
+    source: S,
     clock: R,
     visible: bool,
+    sleeping: bool,
     next_cpu: u64,
     next_disks: u64,
-    disks: Vec<Disk>,
+    disks: Result<Vec<Disk>, ()>,
     jiffies: Option<Jiffies>,
     usage: Option<f64>,
     history: VecDeque<f64>,
-    battery: Option<Battery>,
+    battery: Result<Option<Battery>, ()>,
+    #[cfg(any(target_os = "linux", test))]
     last: Option<SystemData>,
 }
 
-impl<A: Files, U: UPower, R: Clock> System<A, U, R> {
-    pub fn new(files: A, upower: U, clock: R) -> Self {
+impl<S: Readings, R: Clock> System<S, R> {
+    pub fn new(source: S, clock: R) -> Self {
         System {
-            files,
-            upower,
+            source,
             clock,
             visible: false,
+            sleeping: false,
             next_cpu: 0,
             next_disks: 0,
-            disks: Vec::new(),
+            disks: Ok(Vec::new()),
             jiffies: None,
             usage: None,
             history: VecDeque::new(),
-            battery: None,
+            battery: Ok(None),
+            #[cfg(any(target_os = "linux", test))]
             last: None,
         }
     }
@@ -100,8 +108,10 @@ impl<A: Files, U: UPower, R: Clock> System<A, U, R> {
         self.jiffies = None;
         self.usage = None;
         self.history.clear();
-        self.battery = battery::read(&self.upower);
-        self.next_cpu = self.clock.now();
+        if !self.sleeping && !self.source.poll_battery() {
+            self.battery = self.source.battery();
+        }
+        self.next_cpu = self.clock.monotonic_ms();
         self.next_disks = self.next_cpu;
     }
 
@@ -112,60 +122,85 @@ impl<A: Files, U: UPower, R: Clock> System<A, U, R> {
         }
     }
 
+    fn sleep(&mut self, sleeping: bool) {
+        self.sleeping = sleeping;
+        if !sleeping {
+            self.resume();
+        }
+    }
+
     pub fn hide(&mut self) {
         self.visible = false;
-        self.last = None;
+        #[cfg(any(target_os = "linux", test))]
+        {
+            self.last = None;
+        }
     }
 
     /// UPower reported a DisplayDevice change.
+    #[cfg(any(target_os = "linux", test))]
     pub fn battery_changed(&mut self) -> Option<(u64, SystemData)> {
-        if !self.visible {
+        if !self.visible || self.sleeping {
             return None;
         }
-        self.battery = battery::read(&self.upower);
+        self.battery = self.source.battery();
         let mut data = self.last.clone()?;
-        data.battery = self.battery.clone();
+        data.battery = self.battery.clone().ok().flatten();
         self.last = Some(data.clone());
         Some((self.clock.now(), data))
     }
 
     /// The next collection deadline; None while the module is hidden.
     pub fn deadline(&self) -> Option<u64> {
-        self.visible.then_some(self.next_cpu.min(self.next_disks))
+        (self.visible && !self.sleeping).then_some(self.next_cpu.min(self.next_disks))
     }
 
     /// Collect due readings and return a snapshot with the collection time in epoch milliseconds.
     pub fn step(&mut self) -> Option<(u64, SystemData)> {
-        let now = self.clock.now();
-        if !self.visible || self.deadline().is_some_and(|p| now < p) {
+        let now = self.clock.monotonic_ms();
+        if self.deadline().is_none_or(|deadline| now < deadline) {
             return None;
         }
         if now >= self.next_disks {
             self.next_disks = now + DISK_INTERVAL;
-            self.disks = readings::disks(&self.files);
+            self.disks = self.source.disks();
         }
         if now >= self.next_cpu {
             self.next_cpu = now + CPU_INTERVAL;
             self.usage = self.measure_cpu();
         }
-        let (ram, swap) = readings::memory(&self.files).ok()?;
+        if self.source.poll_battery() {
+            self.battery = self.source.battery();
+        }
+        let (ram, swap) = self.source.memory().ok()?;
+        let mut unavailable_metrics = self.source.unsupported().to_vec();
+        if self.battery.is_err() {
+            unavailable_metrics.push(Metric::Battery);
+        }
+        if self.disks.is_err() {
+            unavailable_metrics.push(Metric::Storage);
+        }
         let data = SystemData {
             cpu: Cpu {
                 usage: self.usage,
                 history: self.history.iter().copied().collect(),
-                temperature: readings::temperature(&self.files),
+                temperature: self.source.temperature(),
             },
             ram,
             swap,
-            disks: self.disks.clone(),
-            battery: self.battery.clone(),
+            disks: self.disks.clone().unwrap_or_default(),
+            battery: self.battery.clone().ok().flatten(),
+            unavailable_metrics,
         };
-        self.last = Some(data.clone());
-        Some((now, data))
+        #[cfg(any(target_os = "linux", test))]
+        {
+            self.last = Some(data.clone());
+        }
+        Some((self.clock.now(), data))
     }
 
     fn measure_cpu(&mut self) -> Option<f64> {
-        let current = readings::jiffies(&self.files).ok();
+        let current = self.source.cpu().ok();
         let previous = std::mem::replace(&mut self.jiffies, current);
         let usage = (current?.usage_since(previous?)? * 10.0).round() / 10.0;
         if self.history.len() == HISTORY_POINTS {
@@ -178,30 +213,39 @@ impl<A: Files, U: UPower, R: Clock> System<A, U, R> {
 
 enum Event {
     Visible(bool),
+    #[cfg(target_os = "linux")]
     BatteryChanged,
-    Resume,
+    Sleep(bool),
 }
 
 /// Channel for the collector thread, which sleeps until a deadline or event.
 pub struct Collector(Sender<Event>);
 
 impl Collector {
-    #[cfg(target_os = "linux")]
     pub fn start(app: AppHandle) -> Self {
         let (tx, rx) = mpsc::channel();
-        let notice = tx.clone();
-        battery::listen_upower(move || {
-            let _ = notice.send(Event::BatteryChanged);
-        });
+        #[cfg(target_os = "linux")]
+        {
+            let notice = tx.clone();
+            battery::listen_upower(move || {
+                let _ = notice.send(Event::BatteryChanged);
+            });
+        }
         let loop_handle = move || {
             let clock = SystemClock;
-            let mut system =
-                System::new(RootFilesystem::system(), UPowerDbus::connect(), SystemClock);
+            #[cfg(target_os = "linux")]
+            let source = LinuxReadings(
+                crate::ports::RootFilesystem::system(),
+                UPowerDbus::connect(),
+            );
+            #[cfg(windows)]
+            let source = crate::platform::SystemReadings;
+            let mut system = System::new(source, clock);
             loop {
                 let event = match system.deadline() {
-                    Some(deadline) => {
-                        rx.recv_timeout(Duration::from_millis(deadline.saturating_sub(clock.now())))
-                    }
+                    Some(deadline) => rx.recv_timeout(Duration::from_millis(
+                        deadline.saturating_sub(clock.monotonic_ms()),
+                    )),
                     None => rx.recv().map_err(|_| RecvTimeoutError::Disconnected),
                 };
                 let next = match event {
@@ -213,10 +257,11 @@ impl Collector {
                         system.hide();
                         None
                     }
-                    Ok(Event::Resume) => {
-                        system.resume();
+                    Ok(Event::Sleep(sleeping)) => {
+                        system.sleep(sleeping);
                         None
                     }
+                    #[cfg(target_os = "linux")]
                     Ok(Event::BatteryChanged) => system.battery_changed(),
                     Err(RecvTimeoutError::Timeout) => system.step(),
                     Err(RecvTimeoutError::Disconnected) => return,
@@ -241,8 +286,8 @@ impl Collector {
         Collector(std::sync::mpsc::channel().0)
     }
 
-    pub fn resume(&self) {
-        let _ = self.0.send(Event::Resume);
+    pub fn sleep(&self, sleeping: bool) {
+        let _ = self.0.send(Event::Sleep(sleeping));
     }
 
     /// Collect only while the System module is visible.
@@ -263,6 +308,7 @@ fn snapshot(when: u64, data: &SystemData) -> Snapshot {
 mod tests {
     use super::*;
     use crate::ports::fakes::{FakeClock, FakeRoot};
+    use crate::ports::Files;
     use crate::ports::Space;
 
     const GIB: u64 = 1024 * 1024 * 1024;
@@ -272,7 +318,7 @@ mod tests {
         root: FakeRoot,
         upower: battery::fake::FakeUPower,
         clock: FakeClock,
-        system: System<FakeRoot, battery::fake::FakeUPower, FakeClock>,
+        system: System<LinuxReadings<FakeRoot, battery::fake::FakeUPower>, FakeClock>,
     }
 
     fn notebook() -> Scenario {
@@ -296,7 +342,7 @@ mod tests {
         }
         let upower = battery::fake::FakeUPower::from("notebook-charged");
         let clock = FakeClock::at(1_000_000);
-        let system = System::new(root.clone(), upower.clone(), clock.clone());
+        let system = System::new(LinuxReadings(root.clone(), upower.clone()), clock.clone());
         Scenario {
             root,
             upower,
@@ -319,6 +365,21 @@ mod tests {
         c.system.hide();
         c.system.resume();
         assert!(c.system.step().is_none());
+    }
+
+    #[test]
+    fn sleep_pauses_visible_system_until_resume_even_offline() {
+        let mut c = notebook();
+        c.system.show();
+        assert!(c.system.step().is_some());
+        c.system.sleep(true);
+        c.clock.advance(60_000);
+        assert!(c.system.deadline().is_none());
+        assert!(c.system.step().is_none());
+        c.system.sleep(false);
+        let data = c.system.step().unwrap().1;
+        assert_eq!(data.cpu.usage, None);
+        assert!(data.cpu.history.is_empty());
     }
 
     #[test]

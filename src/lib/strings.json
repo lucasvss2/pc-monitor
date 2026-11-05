@@ -100,7 +100,10 @@
     "noBattery": "Sem bateria detectada",
     "lowBattery": "Bateria baixa",
     "stale": "Leitura antiga · sem atualização {age}",
-    "temperatureNoSensor": "Temperatura · sem sensor"
+    "temperatureNoSensor": "Temperatura · sem sensor",
+    "temperatureUnsupported": "Temperatura · coleta indisponível no Windows",
+    "storageUnavailable": "Armazenamento · leitura indisponível",
+    "batteryUnavailable": "Bateria · leitura indisponível"
   },
   "network": {
     "good": "Boa",
@@ -112,6 +115,10 @@
     "warning": "Atenção",
     "risk": "Risco",
     "disconnected": "Sem conexão",
+    "connected": "Conectado",
+    "connectionUnavailable": "Conexão · leitura indisponível",
+    "securityUnavailable": "avaliação indisponível no Windows",
+    "appsUnavailable": "Tráfego por aplicativo indisponível no Windows",
     "unmeasured": "Aguardando medição",
     "noReading": "Sem leitura da rede ainda",
     "wired": "Cabeada",

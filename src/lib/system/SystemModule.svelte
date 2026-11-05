@@ -34,14 +34,17 @@
    * `missing` keeps the slot of a meter the machine lacks, with the reason under an empty track.
    */
   type Meter = { name: string; used: number; total: number; warning: boolean; note: boolean; missing?: string };
+  const unavailable = (metric: NonNullable<SystemData["unavailableMetrics"]>[number]) => data?.unavailableMetrics?.includes(metric) ?? false;
 
   /** The root disk represents the machine; the others only appear when they warn. */
   const disk = $derived(data?.disks.find((d) => d.mount === "/") ?? data?.disks[0] ?? null);
   const meters = $derived.by(() => {
     if (!data) return [];
     const list: Meter[] = [{ name: t.system.ram, ...data.ram, warning: false, note: true }];
-    list.push(data.swap ? { name: t.system.swap, ...data.swap, warning: false, note: false }
-      : { name: t.system.swap, used: 0, total: 0, warning: false, note: false, missing: t.system.noSwap });
+    if (!unavailable("swap")) {
+      list.push(data.swap ? { name: t.system.swap, ...data.swap, warning: false, note: false }
+        : { name: t.system.swap, used: 0, total: 0, warning: false, note: false, missing: t.system.noSwap });
+    }
     if (disk) list.push({ name: interpolate(t.system.disk, { mount: disk.mount }), used: disk.used, total: disk.total, warning: disk.warning, note: false });
     return list;
   });
@@ -88,7 +91,7 @@
           <small id="system-temperature">{t.system.temperature}</small>
         {:else}
           <strong class="num empty" aria-hidden="true">—</strong>
-          <small id="system-temperature">{t.system.temperatureNoSensor}</small>
+          <small id="system-temperature">{unavailable("temperature") ? t.system.temperatureUnsupported : t.system.temperatureNoSensor}</small>
         {/if}
       </div>
     </div>
@@ -112,13 +115,14 @@
       </div>
       {/if}
     {/each}
+    {#if unavailable("storage")}<small class="line">{t.system.storageUnavailable}</small>{/if}
 
     {#if battery}
       <p class="battery" class:warning={battery.warning}>
         <span aria-hidden="true">{"▰ "}</span>{t.system.battery} {Math.round(battery.percentage)}% · {t.system.statesBattery[battery.state]}
       </p>
     {:else}
-      <p class="battery missing"><span aria-hidden="true">{"▱ "}</span>{t.system.noBattery}</p>
+      <p class="battery missing"><span aria-hidden="true">{"▱ "}</span>{unavailable("battery") ? t.system.batteryUnavailable : t.system.noBattery}</p>
     {/if}
     </div>
   {/if}

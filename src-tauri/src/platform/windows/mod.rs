@@ -1,14 +1,18 @@
 //! Windows implementations; no Linux filesystem or Secret Service emulation.
 mod credentials;
 mod hooks;
+mod network;
 mod notifications;
 mod protocol;
 mod session;
 mod startup;
+mod system;
 pub use credentials::NativeKeyring;
 pub use hooks::endpoint as hook_endpoint;
 pub use hooks::{NativeHookSocket, TimedStdin};
+pub use network::{WindowsNetwork, WindowsPing};
 pub use startup::startup_storage;
+pub use system::SystemReadings;
 pub fn agent_notifications(app: tauri::AppHandle) -> impl crate::agents::notifications::Sink {
     notifications::Desktop::new(app)
 }
@@ -16,10 +20,6 @@ use crate::ports::*;
 use std::{io, path::Path};
 use windows::core::PCWSTR;
 
-#[allow(
-    dead_code,
-    reason = "Adapter is retained for the next Windows collector stage"
-)]
 pub fn space(path: &Path) -> io::Result<Space> {
     use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
@@ -123,18 +123,9 @@ impl DesktopSettings for PortalSettings {
 pub struct WindowsConnectivity;
 impl crate::network::NetworkManager for WindowsConnectivity {
     fn connection(&self) -> io::Result<crate::network::Connection> {
-        use windows::Win32::{Networking::NetworkListManager::*, System::Com::*};
-        unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok() }
-            .map_err(|_| io::Error::other("connectivity unavailable"))?;
-        let result = (|| -> windows::core::Result<bool> {
-            let manager: INetworkListManager =
-                unsafe { CoCreateInstance(&NetworkListManager, None, CLSCTX_ALL) }?;
+        let online = network::with_network_manager(|manager| {
             Ok(unsafe { manager.IsConnectedToInternet() }?.as_bool())
-        })();
-        unsafe {
-            CoUninitialize();
-        }
-        let online = result.map_err(|_| io::Error::other("connectivity unavailable"))?;
+        })?;
         Ok(crate::network::Connection {
             connectivity: if online { 4 } else { 1 },
             ..Default::default()

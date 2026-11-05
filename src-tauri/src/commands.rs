@@ -39,11 +39,7 @@ pub fn initial_state(
     InitialState {
         runtime_id: snapshots.runtime_id().into(),
         preferences_error: state.preferences_error(),
-        unavailable_modules: if cfg!(windows) {
-            vec![Module::Network, Module::System]
-        } else {
-            vec![]
-        },
+        unavailable_modules: vec![],
         panel_visible: {
             use tauri::Manager;
             app.get_webview_window(panel::LABEL)

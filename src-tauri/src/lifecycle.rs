@@ -165,20 +165,18 @@ pub fn start(app: &tauri::AppHandle) {
             crate::platform::session(),
             crate::ports::SystemClock,
         );
-        let mut generation = 0;
         loop {
+            let was_sleeping = lifecycle.sleeping;
             let status = lifecycle.step();
             *shared.lock().unwrap() = status;
-            if status.online
-                && crate::ports::SystemClock.now() >= status.ready_for(0)
-                && status.generation != generation
-            {
-                generation = status.generation;
+            if lifecycle.sleeping != was_sleeping {
                 if let Some(collector) = app.try_state::<crate::system::Collector>() {
-                    collector.resume();
+                    collector.sleep(lifecycle.sleeping);
                 }
                 if let Some(collector) = app.try_state::<crate::network::Collector>() {
-                    let _ = collector.0.send(crate::network::Command::Resume);
+                    let _ = collector
+                        .0
+                        .send(crate::network::Command::Sleep(lifecycle.sleeping));
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(100));

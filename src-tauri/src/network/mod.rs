@@ -13,6 +13,29 @@ mod tests;
 use crate::ports::{Clock, Files};
 pub trait NetworkManager: Send {
     fn connection(&self) -> std::io::Result<Connection>;
+    fn counters(&self, files: &dyn Files, _: &Connection) -> std::io::Result<Counters> {
+        let text = files.read("/proc/net/dev")?;
+        Ok(text
+            .lines()
+            .filter_map(|line| {
+                let (name, numbers) = line.split_once(':')?;
+                let mut values = numbers.split_whitespace();
+                let rx = values.next()?.parse().ok()?;
+                let tx = values.nth(7)?.parse().ok()?;
+                Some((name.trim().to_string(), (rx, tx)))
+            })
+            .collect())
+    }
+    fn interface_index(&self, files: &dyn Files, interface: &str) -> u32 {
+        files
+            .read(&format!("/sys/class/net/{interface}/ifindex"))
+            .ok()
+            .and_then(|value| value.trim().parse().ok())
+            .unwrap_or(0)
+    }
+    fn advanced_available(&self) -> bool {
+        true
+    }
     fn check_portal(&self) -> Option<bool> {
         None
     }
@@ -85,6 +108,12 @@ pub struct Traffic {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkData {
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub advanced_unavailable: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub connection_unavailable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub link_kind: Option<LinkKind>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub connection_revision: Option<u64>,
     pub process_traffic: Option<process::ProcessTraffic>,
@@ -107,7 +136,18 @@ pub struct NetworkData {
     pub history: Vec<Traffic>,
 }
 
-type Counters = HashMap<String, (u64, u64)>;
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LinkKind {
+    Wired,
+    Wireless,
+    Other,
+}
+
+pub type Counters = HashMap<String, (u64, u64)>;
+pub(crate) const INTERNET_V4: std::net::Ipv4Addr = std::net::Ipv4Addr::new(1, 1, 1, 1);
+pub(crate) const INTERNET_V6: std::net::Ipv6Addr =
+    std::net::Ipv6Addr::new(0x2606, 0x4700, 0x4700, 0, 0, 0, 0, 0x1111);
 
 pub struct Network<A, N, S, R, V = NoopCheck, T = NoopNotifier> {
     processes: Option<process::Attribution>,
@@ -229,10 +269,12 @@ impl<A: Files, N: NetworkManager, S: Probe, R: Clock, V: Check, T: crate::ports:
             return None;
         }
         self.next = now + 1000;
-        // Query NetworkManager even while the panel is closed. D-Bus errors never reuse an old link.
-        let connection = self.nm.connection().unwrap_or_default();
-        if self.connection.id != connection.id
-            || self.connection.interface != connection.interface
+        // Query the platform even while the panel is closed. Errors never reuse an old link.
+        let connection = self.nm.connection();
+        let connection_unavailable = connection.is_err();
+        let connection = connection.unwrap_or_default();
+        let changed = self.connection.network_identity() != connection.network_identity();
+        if changed
             || self.connection.gateway != connection.gateway
             || self.connection.addresses != connection.addresses
         {
@@ -245,10 +287,7 @@ impl<A: Files, N: NetworkManager, S: Probe, R: Clock, V: Check, T: crate::ports:
             self.next_ping = 0;
         }
         // Publish an opaque revision only when a known connected identity really changes.
-        if self.connection.connected()
-            && connection.connected()
-            && self.connection.network_identity() != connection.network_identity()
-        {
+        if self.connection.connected() && connection.connected() && changed {
             self.connection_revision += 1;
         }
         let next = self.connection.id != connection.id
@@ -257,14 +296,18 @@ impl<A: Files, N: NetworkManager, S: Probe, R: Clock, V: Check, T: crate::ports:
             self.assessment = Assessment::default();
         }
         self.connection = connection;
-        let (security, reasons) =
+        let advanced_unavailable = !self.nm.advanced_available();
+        let (security, reasons) = if advanced_unavailable {
+            (None, vec![])
+        } else {
             self.assessment
-                .assess(&self.connection, now, &self.check, &self.nm, &self.notifier);
+                .assess(&self.connection, now, &self.check, &self.nm, &self.notifier)
+        };
         if let Some(speed) = &mut self.speed {
             speed.step(&self.connection, now);
         }
         let connected = self.connection.connected();
-        let traffic = self.traffic(self.clock.now());
+        let traffic = self.traffic(self.clock.monotonic_ms());
         if let Some(processes) = &mut self.processes {
             if connected {
                 processes.step(
@@ -278,27 +321,29 @@ impl<A: Files, N: NetworkManager, S: Probe, R: Clock, V: Check, T: crate::ports:
                 processes.reset();
             }
         }
-        if connected && now >= self.next_ping {
+        let has_probe_route = !advanced_unavailable || !self.connection.interface.is_empty();
+        if connected && has_probe_route && now >= self.next_ping {
             self.next_ping = now + 5000;
             let gateway = self.connection.gateway.map(|ip| match ip {
                 IpAddr::V6(ip) if ip.is_unicast_link_local() => {
                     let index = self
-                        .files
-                        .read(&format!(
-                            "/sys/class/net/{}/ifindex",
-                            self.connection.interface
-                        ))
-                        .ok()
-                        .and_then(|s| s.trim().parse().ok())
-                        .unwrap_or(0);
+                        .nm
+                        .interface_index(&self.files, &self.connection.interface);
                     SocketAddr::V6(SocketAddrV6::new(ip, 0, 0, index))
                 }
                 _ => SocketAddr::new(ip, 0),
             });
-            let internet: SocketAddr = if gateway.is_some_and(|g| g.is_ipv6()) {
-                "[2606:4700:4700::1111]:0".parse().unwrap()
+            let internet = if gateway.is_some_and(|g| g.is_ipv6())
+                || (gateway.is_none()
+                    && self
+                        .connection
+                        .addresses
+                        .first()
+                        .is_some_and(IpAddr::is_ipv6))
+            {
+                SocketAddr::new(INTERNET_V6.into(), 0)
             } else {
-                "1.1.1.1:0".parse().unwrap()
+                SocketAddr::new(INTERNET_V4.into(), 0)
             };
             let (gateway, internet) = std::thread::scope(|scope| {
                 let gateway = scope.spawn(|| gateway.and_then(|ip| self.probe.measure(ip)));
@@ -335,6 +380,15 @@ impl<A: Files, N: NetworkManager, S: Probe, R: Clock, V: Check, T: crate::ports:
         Some((
             now,
             NetworkData {
+                advanced_unavailable,
+                connection_unavailable,
+                link_kind: (connected && advanced_unavailable).then_some(
+                    match self.connection.kind.as_str() {
+                        "802-3-ethernet" => LinkKind::Wired,
+                        "802-11-wireless" => LinkKind::Wireless,
+                        _ => LinkKind::Other,
+                    },
+                ),
                 connection_revision: (self.connection_revision > 0)
                     .then_some(self.connection_revision),
                 process_traffic: self.processes.as_ref().and_then(|p| p.data.clone()),
@@ -360,27 +414,13 @@ impl<A: Files, N: NetworkManager, S: Probe, R: Clock, V: Check, T: crate::ports:
         ))
     }
     fn traffic(&mut self, now: u64) -> Option<Traffic> {
-        let text = match self.files.read("/proc/net/dev") {
-            Ok(t) => t,
+        let current_counters = match self.nm.counters(&self.files, &self.connection) {
+            Ok(counters) => counters,
             Err(_) => {
                 self.previous = None;
                 return None;
             }
         };
-        let current_counters: HashMap<_, _> = text
-            .lines()
-            .filter_map(|line| {
-                let (name, numbers) = line.split_once(':')?;
-                let values: Vec<_> = numbers.split_whitespace().collect();
-                Some((
-                    name.trim().to_string(),
-                    (
-                        values.first()?.parse::<u64>().ok()?,
-                        values.get(8)?.parse::<u64>().ok()?,
-                    ),
-                ))
-            })
-            .collect();
         let previous = self.previous.replace((now, current_counters.clone()));
         let (when, previous) = previous?;
         if !self.connection.connected() {
@@ -448,17 +488,17 @@ fn classify(g: &Measurements, i: &Measurements, connectivity: u32) -> Quality {
 }
 pub enum Command {
     Visible(bool),
-    Resume,
+    Sleep(bool),
     FullSpeed,
     AutomaticSpeed(bool),
 }
 pub struct Collector(pub std::sync::mpsc::Sender<Command>);
-#[cfg(target_os = "linux")]
 pub fn start(app: tauri::AppHandle) {
     use tauri::Manager;
     let (tx, rx) = std::sync::mpsc::channel();
     app.manage(Collector(tx));
     std::thread::spawn(move || {
+        #[cfg(target_os = "linux")]
         let mut network = Network::new(
             crate::ports::RootFilesystem::system(),
             NetworkManagerDbus::connect(),
@@ -467,6 +507,13 @@ pub fn start(app: tauri::AppHandle) {
         )
         .with_security(SystemCheck(SystemReadings), crate::ports::DesktopNotifier)
         .with_processes(process::KernelDiagnostics);
+        #[cfg(windows)]
+        let mut network = Network::new(
+            crate::ports::RootFilesystem::system(),
+            crate::platform::WindowsNetwork,
+            crate::platform::WindowsPing,
+            crate::ports::SystemClock,
+        );
         network = match (dirs::cache_dir(), dirs::state_dir()) {
             (Some(cache), Some(state)) => network.with_speed(
                 speed::Worker::new(speed::Cloudflare),
@@ -491,6 +538,9 @@ pub fn start(app: tauri::AppHandle) {
         }
         // Publish the cached speed before the first live probe can block.
         let initial = NetworkData {
+            advanced_unavailable: !network.nm.advanced_available(),
+            connection_unavailable: false,
+            link_kind: None,
             connection_revision: None,
             speed_operation: None,
             process_traffic: None,
@@ -511,16 +561,22 @@ pub fn start(app: tauri::AppHandle) {
             automatic_speed: network.speed.as_ref().is_none_or(|s| s.automatic),
         };
         crate::snapshot::publish(&app, snapshot(network.clock.now(), &initial));
+        let mut sleeping = false;
         loop {
             for command in rx.try_iter() {
                 match command {
-                    Command::Resume => network.resume(),
+                    Command::Sleep(value) => {
+                        sleeping = value;
+                        if sleeping {
+                            network.resume();
+                        }
+                    }
                     Command::Visible(visible) => network.process_visible(visible),
                     Command::FullSpeed => network.request_speed(),
                     Command::AutomaticSpeed(enabled) => network.automatic_speed(enabled),
                 }
             }
-            if let Some((when, data)) = network.step() {
+            if let Some((when, data)) = (!sleeping).then(|| network.step()).flatten() {
                 #[cfg(target_os = "linux")]
                 if let Some(handle) =
                     tauri::Manager::try_state::<ksni::Handle<crate::indicator::Indicator>>(&app)

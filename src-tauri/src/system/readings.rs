@@ -1,12 +1,56 @@
 //! Read /proc and /sys through the filesystem port.
 
-use std::io;
+use super::{battery::Battery, Metric};
 
 use serde::Serialize;
 
+#[cfg(any(target_os = "linux", test))]
 use crate::ports::Files;
+#[cfg(any(target_os = "linux", test))]
+use std::io;
 
-/// Cumulative counters from the cpu line in /proc/stat.
+pub trait Readings: Send {
+    fn cpu(&self) -> Result<Jiffies, ()>;
+    fn memory(&self) -> Result<(Memory, Option<Memory>), ()>;
+    fn disks(&self) -> Result<Vec<Disk>, ()>;
+    fn battery(&self) -> Result<Option<Battery>, ()>;
+    fn temperature(&self) -> Option<Temperature> {
+        None
+    }
+    fn unsupported(&self) -> &[Metric] {
+        &[]
+    }
+    fn poll_battery(&self) -> bool {
+        true
+    }
+}
+
+#[cfg(any(target_os = "linux", test))]
+pub struct LinuxReadings<A, U>(pub A, pub U);
+
+#[cfg(any(target_os = "linux", test))]
+impl<A: Files, U: super::battery::UPower> Readings for LinuxReadings<A, U> {
+    fn cpu(&self) -> Result<Jiffies, ()> {
+        jiffies(&self.0).map_err(|_| ())
+    }
+    fn memory(&self) -> Result<(Memory, Option<Memory>), ()> {
+        memory(&self.0).map_err(|_| ())
+    }
+    fn disks(&self) -> Result<Vec<Disk>, ()> {
+        Ok(disks(&self.0))
+    }
+    fn battery(&self) -> Result<Option<Battery>, ()> {
+        Ok(super::battery::read(&self.1))
+    }
+    fn temperature(&self) -> Option<Temperature> {
+        temperature(&self.0)
+    }
+    fn poll_battery(&self) -> bool {
+        false
+    }
+}
+
+/// Cumulative CPU times in the source's native units.
 #[derive(Debug, Clone, Copy)]
 pub struct Jiffies {
     idle: u64,
@@ -14,6 +58,10 @@ pub struct Jiffies {
 }
 
 impl Jiffies {
+    #[cfg(windows)]
+    pub fn new(idle: u64, total: u64) -> Self {
+        Self { idle, total }
+    }
     /// Percentage between two samples; None if counters have not advanced.
     pub fn usage_since(self, previous: Jiffies) -> Option<f64> {
         let total = self.total.checked_sub(previous.total).filter(|&t| t > 0)?;
@@ -22,7 +70,8 @@ impl Jiffies {
     }
 }
 
-pub fn jiffies(files: &impl Files) -> io::Result<Jiffies> {
+#[cfg(any(target_os = "linux", test))]
+fn jiffies(files: &impl Files) -> io::Result<Jiffies> {
     let stat = files.read("/proc/stat")?;
     let fields: Vec<u64> = stat
         .lines()
@@ -52,7 +101,8 @@ pub struct Memory {
 }
 
 /// RAM follows free: used = total minus MemAvailable; include swap when configured.
-pub fn memory(files: &impl Files) -> io::Result<(Memory, Option<Memory>)> {
+#[cfg(any(target_os = "linux", test))]
+fn memory(files: &impl Files) -> io::Result<(Memory, Option<Memory>)> {
     let meminfo = files.read("/proc/meminfo")?;
     let field = |name: &str| -> io::Result<u64> {
         meminfo
@@ -75,10 +125,13 @@ pub fn memory(files: &impl Files) -> io::Result<(Memory, Option<Memory>)> {
     Ok((ram, swap))
 }
 
+#[cfg(any(target_os = "linux", test))]
 const CPU_SENSORS: [&str; 2] = ["k10temp", "coretemp"];
 /// Labels representing the whole CPU, in preference order.
+#[cfg(any(target_os = "linux", test))]
 const CPU_LABELS: [&str; 3] = ["Tctl", "Tdie", "Package id 0"];
 /// Warn at this temperature even if the sensor critical threshold is higher, in millidegrees Celsius.
+#[cfg(any(target_os = "linux", test))]
 const WARNING_THRESHOLD: i64 = 90_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
@@ -90,7 +143,8 @@ pub struct Temperature {
 }
 
 /// CPU temperature through hwmon (k10temp or coretemp); None without a sensor.
-pub fn temperature(files: &impl Files) -> Option<Temperature> {
+#[cfg(any(target_os = "linux", test))]
+fn temperature(files: &impl Files) -> Option<Temperature> {
     let mut sensors = files.list("/sys/class/hwmon").ok()?;
     sensors.sort();
     let dir = sensors
@@ -131,6 +185,7 @@ pub fn temperature(files: &impl Files) -> Option<Temperature> {
 }
 
 /// Filesystems that never represent a user disk, even on block devices.
+#[cfg(any(target_os = "linux", test))]
 const TYPES_EXCLUDED: [&str; 4] = ["tmpfs", "squashfs", "overlay", "efivarfs"];
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -147,7 +202,8 @@ pub struct Disk {
 /// One bars per mounted physical disk: filesystems on /dev/*, excluding snaps and /boot*.
 /// One bars per block device, using its first mount (usually /). Btrfs subvolumes and bind
 /// mounts repeat the source with a different anonymous major:minor.
-pub fn disks(files: &impl Files) -> Vec<Disk> {
+#[cfg(any(target_os = "linux", test))]
+fn disks(files: &impl Files) -> Vec<Disk> {
     let Ok(mountinfo) = files.read("/proc/self/mountinfo") else {
         return Vec::new();
     };
@@ -182,6 +238,7 @@ pub fn disks(files: &impl Files) -> Vec<Disk> {
 }
 
 /// The kernel escapes spaces, tabs, newlines and backslashes as octal sequences such as \040.
+#[cfg(any(target_os = "linux", test))]
 fn unescape(field: &str) -> String {
     let mut output = String::with_capacity(field.len());
     let mut remainder = field;

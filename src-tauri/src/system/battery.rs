@@ -1,5 +1,6 @@
 //! Battery through the UPower DisplayDevice on the system D-Bus.
 
+#[cfg(any(target_os = "linux", test))]
 use std::io;
 #[cfg(target_os = "linux")]
 use std::thread;
@@ -14,6 +15,7 @@ use zbus::names::InterfaceName;
 
 /// Properties of org.freedesktop.UPower.Device used by this module.
 #[derive(Debug, Clone, Default, PartialEq)]
+#[cfg(any(target_os = "linux", test))]
 pub struct DisplayDevice {
     pub kind: u32,
     pub present: bool,
@@ -25,12 +27,15 @@ pub struct DisplayDevice {
 }
 
 /// Injectable UPower D-Bus port.
+#[cfg(any(target_os = "linux", test))]
 pub trait UPower: Send {
     fn display_device(&self) -> io::Result<DisplayDevice>;
 }
 
 /// UPower Type for batteries.
+#[cfg(any(target_os = "linux", test))]
 const BATTERY_TYPE: u32 = 2;
+#[cfg(any(target_os = "linux", test))]
 const WARNING_PERCENTAGE: f64 = 15.0;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -57,6 +62,7 @@ pub enum BatteryState {
 }
 
 /// Read DisplayDevice; None without a battery or UPower.
+#[cfg(any(target_os = "linux", test))]
 pub fn read(upower: &impl UPower) -> Option<Battery> {
     let d = upower.display_device().ok()?;
     if d.kind != BATTERY_TYPE || !d.present {

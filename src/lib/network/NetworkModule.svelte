@@ -33,7 +33,8 @@
 
   const connected = $derived(data?.connected ?? false);
   const quality = $derived(data?.quality ? t.network[data.quality] : t.network.unmeasured);
-  const security = $derived(data?.security ? t.network[data.security] : t.network.unmeasured);
+  const security = $derived(data?.advancedUnavailable ? t.network.securityUnavailable
+    : data?.security ? t.network[data.security] : t.network.unmeasured);
   const alert = $derived(connected && (data?.security === "warning" || data?.security === "risk") ? data.security : null);
 
   const speed = $derived(data?.speed ?? null);
@@ -111,12 +112,12 @@
   {:else}
     {#if connected}
       <p class="network-status">
-        <span>{data.wired ? t.network.wired : t.network.wireless}</span>
+        <span>{data.linkKind === "other" ? t.network.connected : data.wired ? t.network.wired : t.network.wireless}</span>
         <span>{t.network.qualityShort}: {quality}</span>
         <span>{t.network.securityShort}: {security}</span>
       </p>
     {:else}
-      <small class="line alert"><span aria-hidden="true">⊘&nbsp;</span>{t.network.disconnected}</small>
+      <small class="line alert"><span aria-hidden="true">⊘&nbsp;</span>{data.connectionUnavailable ? t.network.connectionUnavailable : t.network.disconnected}</small>
     {/if}
     {#if connected && data.vpn}<small class="line accent">{t.network.vpn}</small>{/if}
     {#if alert}
@@ -188,7 +189,11 @@
       </p>
     </section>
 
-    <button class="detail-button" onclick={openApps} aria-haspopup="dialog">{appsLabel} <span aria-hidden="true">↗</span></button>
+    {#if data.advancedUnavailable}
+      <small class="line">{t.network.appsUnavailable}</small>
+    {:else}
+      <button class="detail-button" onclick={openApps} aria-haspopup="dialog">{appsLabel} <span aria-hidden="true">↗</span></button>
+    {/if}
   {/if}
   <dialog bind:this={dialog} aria-labelledby="network-apps" oncancel={(event) => { event.preventDefault(); closeApps(); }}>
     <header><h2 id="network-apps">{t.network.appsDetail}</h2><button class="detail-button" onclick={closeApps}>{t.network.close} <span aria-hidden="true">×</span></button></header>

@@ -41,6 +41,7 @@ export interface Disk {
 
 /** System snapshot data, including warning decisions made by the core. */
 export interface SystemData {
+  unavailableMetrics?: ("temperature" | "swap" | "storage" | "battery")[];
   cpu: {
     /** Percentage; null until two samples exist. */
     usage: number | null;
@@ -200,6 +201,9 @@ export interface SpeedOperation extends Operation {
 }
 
 export interface NetworkData {
+  advancedUnavailable?: boolean;
+  connectionUnavailable?: boolean;
+  linkKind?: "wired" | "wireless" | "other";
   connectionRevision?: number;
   speedOperation?: SpeedOperation;
   processTraffic: { apps: { name: string; download: number; upload: number }[]; others: NetworkTraffic } | null;

@@ -21,12 +21,11 @@ mod icon;
 mod indicator;
 mod lifecycle;
 mod module;
-// This foundation keeps shared rules available to tests; its native collector is not active yet.
 #[cfg_attr(
     windows,
     allow(
         dead_code,
-        reason = "Windows collector is a later implementation stage"
+        reason = "Advanced security and per-process adapters are Linux-only"
     )
 )]
 mod network;
@@ -45,14 +44,6 @@ mod releases;
 mod snapshot;
 mod state;
 mod strings;
-// This foundation keeps shared rules available to tests; its native collector is not active yet.
-#[cfg_attr(
-    windows,
-    allow(
-        dead_code,
-        reason = "Windows collector is a later implementation stage"
-    )
-)]
 mod system;
 mod tasks;
 mod trello;

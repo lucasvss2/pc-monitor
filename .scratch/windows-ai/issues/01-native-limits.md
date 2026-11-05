@@ -61,3 +61,7 @@ Pendências: repetir arraste, X e Escape. O aceite Claude real depende da dispon
 Em 05/11/2026, o usuário confirmou que o Painel deve adaptar a apresentação às ferramentas instaladas e às janelas retornadas por cada uma. A ausência de uma ferramenta libera seu espaço, a janela semanal sozinha ocupa o mostrador principal e as Configurações identificam as janelas detectadas.
 
 A composição Windows chamava a consulta do Claude mesmo quando seu CLI estava ausente. A consulta agora é pulada nessa situação. Agentes informa quando a descoberta automática está indisponível e mantém a opção de Detecção instantânea com consentimento explícito. A descoberta periódica de sessões vivas do Codex ainda requer um adaptador Windows. Rede e Sistema seguem sem coletores Windows registrados. A conectividade básica usada pelo ciclo de vida não representa as métricas do módulo Rede.
+
+A [CI 42081953119](https://github.com/lucasvss2/pc-monitor/actions/runs/42081953119), revisão `aae49d3`, passou nos testes de interface e de núcleo, incluindo 271 testes Rust Windows, e na verificação nativa do EXE release. A prévia com dados sintéticos confirmou o mostrador semanal principal, a ausência do cartão Claude e a orientação de sessões.
+
+No Windows 11 local, a abertura autorizada do EXE sem assinatura foi recusada pela Integridade de Código (eventos 3077 e 3033). O aceite gráfico do EXE segue pendente. A versão anterior voltou a rodar e a cópia temporária bloqueada foi removida. O candidato continua disponível como artefato da CI.

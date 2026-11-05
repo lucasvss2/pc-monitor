@@ -9,9 +9,7 @@ use crate::state::AppState;
 use crate::system;
 
 pub fn start(app: &AppHandle) {
-    #[cfg(target_os = "linux")]
     app.manage(system::Collector::start(app.clone()));
-    #[cfg(target_os = "linux")]
     crate::network::start(app.clone());
     crate::lifecycle::start(app);
     crate::github::start(app.clone());
