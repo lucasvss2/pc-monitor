@@ -124,6 +124,7 @@ struct Observation {
     started_at: u64,
     claude: Option<SessionReading>,
     codex: Option<SessionReading>,
+    codex_partial: bool,
 }
 
 pub struct Monitor<P, C> {
@@ -165,7 +166,6 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
         self.programs = Some(Box::new(programs));
         self
     }
-    #[cfg(target_os = "linux")]
     fn with_codex(mut self, source: impl codex::Source + 'static) -> Self {
         self.codex = Some(Box::new(source));
         self
@@ -247,7 +247,7 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
         self.next = Some(now.saturating_add(2000));
         Some(self.collect())
     }
-    fn collect(&self) -> Observation {
+    fn collect(&mut self) -> Observation {
         let started_at = self.clock.now();
         let claude = self
             .programs
@@ -259,7 +259,8 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
                     .and_then(|json| serde_json::from_str::<Vec<Record>>(&json).map_err(|_| ()))
                     .and_then(|records| records.into_iter().map(Record::session).collect())
             });
-        let codex = self.codex.as_ref().map(|source| {
+        let codex_partial = self.codex.as_ref().is_some_and(|source| source.partial());
+        let codex = self.codex.as_mut().map(|source| {
             source.sessions(
                 &self
                     .sessions
@@ -273,6 +274,7 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
             started_at,
             claude,
             codex,
+            codex_partial,
         }
     }
     fn observe(&mut self, observation: Observation) -> Data {
@@ -287,6 +289,20 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
             match result {
                 Some(Ok(records)) => {
                     polled = true;
+                    if provider == Provider::Codex && observation.codex_partial {
+                        sessions.extend(
+                            self.sessions
+                                .iter()
+                                .filter(|session| {
+                                    session.provider == provider
+                                        && !records
+                                            .iter()
+                                            .any(|(record, _)| record.id == session.id)
+                                })
+                                .cloned()
+                                .map(|session| (session, true)),
+                        );
+                    }
                     sessions.extend(records);
                 }
                 other => {
@@ -416,7 +432,7 @@ pub fn start(app: tauri::AppHandle) {
             hooks::Configuration::new(crate::persistence::DiskStorage(home.clone()), executable);
         let mut socket =
             hooks::socket_path().and_then(|path| crate::ports::NativeHookSocket::bind(&path).ok());
-        let (observations, tracked) = polling(home.join(".codex"));
+        let (observations, tracked) = polling(crate::ai::codex_home(&home));
         let mut monitor = Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock)
             .with_notifications(crate::platform::agent_notifications(app.clone()));
         #[cfg(windows)]
@@ -482,9 +498,15 @@ fn polling(
             crate::ports::RootFilesystem::system(),
         ));
         #[cfg(windows)]
-        let mut poller = poller;
-        #[cfg(windows)]
-        let _ = root;
+        let mut poller = if let Some(executable) = crate::ai::windows_codex() {
+            poller.with_codex(codex::windows::Adapter::new(
+                root,
+                crate::ports::RootFilesystem::system(),
+                crate::platform::CodexRollouts::new(executable),
+            ))
+        } else {
+            poller
+        };
         loop {
             poller.sessions = worker_tracked.lock().unwrap().clone();
             if let Some(observation) = poller.poll() {

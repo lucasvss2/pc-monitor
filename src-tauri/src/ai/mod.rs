@@ -722,15 +722,24 @@ pub enum Command {
     SetClaudeUsage(bool, tokio::sync::oneshot::Sender<Result<(), ClaudeError>>),
 }
 pub struct Collector(pub std::sync::mpsc::Sender<Command>);
+pub(crate) fn codex_home(home: &std::path::Path) -> std::path::PathBuf {
+    std::env::var_os("CODEX_HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| home.join(".codex"))
+}
+
+#[cfg(windows)]
+pub(crate) fn windows_codex() -> Option<std::path::PathBuf> {
+    windows::codex(&std::env::var_os("PATH")?)
+}
+
 pub fn start(app: tauri::AppHandle) {
     use tauri::Manager;
     let (tx, rx) = std::sync::mpsc::channel();
     app.manage(Collector(tx));
     std::thread::spawn(move || {
         let home = dirs::home_dir().unwrap_or_default();
-        let codex_home = std::env::var_os("CODEX_HOME")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| home.join(".codex"));
+        let codex_home = codex_home(&home);
         let claude_home = std::env::var_os("CLAUDE_CONFIG_DIR")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|| home.join(".claude"));

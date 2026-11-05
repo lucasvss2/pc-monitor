@@ -15,9 +15,7 @@ impl AppServer for CodexCli {
         }
         #[cfg(windows)]
         {
-            std::env::var_os("PATH")
-                .and_then(|path| super::windows::codex(&path))
-                .is_some()
+            super::windows_codex().is_some()
         }
     }
 
@@ -26,7 +24,7 @@ impl AppServer for CodexCli {
         #[cfg(target_os = "linux")]
         let program = std::path::PathBuf::from("codex");
         #[cfg(windows)]
-        let program = super::windows::codex(&std::env::var_os("PATH").ok_or(())?).ok_or(())?;
+        let program = super::windows_codex().ok_or(())?;
         let mut command = Command::new(program);
         command.arg("app-server");
         #[cfg(windows)]

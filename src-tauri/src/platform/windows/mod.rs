@@ -1,4 +1,5 @@
 //! Windows implementations; no Linux filesystem or Secret Service emulation.
+mod codex_sessions;
 mod credentials;
 mod hooks;
 mod network;
@@ -7,6 +8,7 @@ mod protocol;
 mod session;
 mod startup;
 mod system;
+pub use codex_sessions::CodexRollouts;
 pub use credentials::NativeKeyring;
 pub use hooks::endpoint as hook_endpoint;
 pub use hooks::{NativeHookSocket, TimedStdin};

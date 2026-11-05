@@ -2,16 +2,26 @@
 use super::{Provider, Session, SessionState};
 use crate::ports::Files;
 use serde::Deserialize;
+#[cfg(target_os = "linux")]
 use std::{collections::HashSet, path::PathBuf};
+
+#[cfg(windows)]
+#[path = "codex_windows.rs"]
+pub(super) mod windows;
 
 /// Read-only local session source; no content is persisted or logged.
 pub(super) trait Source: Send {
-    fn sessions(&self, tracked: &[String]) -> Result<Vec<(Session, bool)>, ()>;
+    fn sessions(&mut self, tracked: &[String]) -> Result<Vec<(Session, bool)>, ()>;
+    fn partial(&self) -> bool {
+        false
+    }
 }
+#[cfg(target_os = "linux")]
 pub(super) struct Adapter<F> {
     root: PathBuf,
     files: F,
 }
+#[cfg(target_os = "linux")]
 impl<F: Files> Adapter<F> {
     pub fn new(root: PathBuf, files: F) -> Self {
         Self { root, files }
@@ -69,8 +79,9 @@ impl<F: Files> Adapter<F> {
         Ok(paths)
     }
 }
+#[cfg(target_os = "linux")]
 impl<F: Files> Source for Adapter<F> {
-    fn sessions(&self, tracked: &[String]) -> Result<Vec<(Session, bool)>, ()> {
+    fn sessions(&mut self, tracked: &[String]) -> Result<Vec<(Session, bool)>, ()> {
         let path = self.root.join("state_5.sqlite");
         // Absence is an empty source only before a session has been observed.
         match self.files.list(&self.root.to_string_lossy()) {
@@ -89,67 +100,11 @@ impl<F: Files> Source for Adapter<F> {
         let live = self.live_rollouts()?;
         let mut sessions = Vec::new();
         for row in rows {
-            let Thread {
-                id,
-                rollout_path: rollout,
-                cwd,
-                title,
-                created_at: created,
-                updated_at: updated,
-                git_branch: branch,
-            } = serde_json::from_value(row).map_err(|_| ())?;
-            let running = live.contains(&PathBuf::from(&rollout));
-            if !running && !tracked.iter().any(|known| known == &format!("codex:{id}")) {
-                continue;
+            let thread: Thread = serde_json::from_value(row).map_err(|_| ())?;
+            let running = live.contains(&PathBuf::from(&thread.rollout_path));
+            if running || tracked.contains(&thread.session_id()) {
+                sessions.push((thread.session(&self.files, &thread.rollout_path)?, running));
             }
-            let mut state = SessionState::Done;
-            let mut interrupted = false;
-            let mut turn_duration = None;
-            {
-                let content = self.files.read(&rollout).map_err(|_| ())?;
-                for line in content.lines() {
-                    let Ok(event) = serde_json::from_str::<serde_json::Value>(line) else {
-                        continue;
-                    };
-                    if event["type"] != "event_msg" {
-                        continue;
-                    }
-                    if matches!(
-                        event["payload"]["type"].as_str(),
-                        Some("task_started" | "task_complete" | "turn_aborted" | "error")
-                    ) {
-                        interrupted = event["payload"]["type"] == "turn_aborted";
-                        turn_duration = event["payload"]["duration_ms"].as_u64();
-                    }
-                    match event["payload"]["type"].as_str() {
-                        Some("task_started") => state = SessionState::Working,
-                        Some("task_complete" | "turn_aborted") => state = SessionState::Done,
-                        Some("error") => state = SessionState::Failed,
-                        _ => {}
-                    }
-                }
-            }
-            sessions.push((
-                Session {
-                    interrupted,
-                    turn_duration,
-                    id: format!("codex:{id}"),
-                    provider: Provider::Codex,
-                    project: std::path::Path::new(&cwd)
-                        .file_name()
-                        .map(|p| p.to_string_lossy().into_owned())
-                        .unwrap_or(cwd),
-                    name: Some(title),
-                    branch,
-                    updated_at: Some(u64::try_from(updated).map_err(|_| ())?.saturating_mul(1000)),
-                    state,
-                    waiting_for: None,
-                    started_at: u64::try_from(created).map_err(|_| ())?.saturating_mul(1000),
-                    closed_at: None,
-                    last_state: None,
-                },
-                running,
-            ));
         }
         Ok(sessions)
     }
@@ -169,7 +124,7 @@ pub(super) mod tests {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 struct Thread {
     id: String,
     rollout_path: String,
@@ -178,6 +133,75 @@ struct Thread {
     created_at: i64,
     updated_at: i64,
     git_branch: Option<String>,
+}
+
+impl Thread {
+    fn session_id(&self) -> String {
+        format!("codex:{}", self.id)
+    }
+
+    fn session(&self, files: &impl Files, rollout: &str) -> Result<Session, ()> {
+        let Self {
+            id,
+            cwd,
+            title,
+            created_at: created,
+            updated_at: updated,
+            git_branch: branch,
+            ..
+        } = self;
+        let mut state = SessionState::Done;
+        let mut interrupted = false;
+        let mut turn_duration = None;
+        {
+            let content = files.read(rollout).map_err(|_| ())?;
+            for line in content.lines() {
+                let Ok(event) = serde_json::from_str::<serde_json::Value>(line) else {
+                    continue;
+                };
+                if event["type"] != "event_msg" {
+                    continue;
+                }
+                if matches!(
+                    event["payload"]["type"].as_str(),
+                    Some("task_started" | "task_complete" | "turn_aborted" | "error")
+                ) {
+                    interrupted = event["payload"]["type"] == "turn_aborted";
+                    turn_duration = event["payload"]["duration_ms"].as_u64();
+                }
+                match event["payload"]["type"].as_str() {
+                    Some("task_started") => state = SessionState::Working,
+                    Some("task_complete" | "turn_aborted") => state = SessionState::Done,
+                    Some("error") => state = SessionState::Failed,
+                    _ => {}
+                }
+            }
+        }
+        Ok(Session {
+            interrupted,
+            turn_duration,
+            id: format!("codex:{id}"),
+            provider: Provider::Codex,
+            project: std::path::Path::new(cwd)
+                .file_name()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|| cwd.clone()),
+            name: Some(title.clone()),
+            branch: branch.clone(),
+            updated_at: Some(
+                u64::try_from(*updated)
+                    .map_err(|_| ())?
+                    .saturating_mul(1000),
+            ),
+            state,
+            waiting_for: None,
+            started_at: u64::try_from(*created)
+                .map_err(|_| ())?
+                .saturating_mul(1000),
+            closed_at: None,
+            last_state: None,
+        })
+    }
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -190,6 +214,7 @@ impl Adapter<crate::ports::fakes::FakeRoot> {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn process_uid(status: &str) -> Result<&str, ()> {
     status
         .lines()

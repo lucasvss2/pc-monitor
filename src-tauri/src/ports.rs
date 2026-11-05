@@ -5,6 +5,16 @@ use std::io;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(windows)]
+pub trait LiveRollouts: Send {
+    /// Candidate paths to their validated local paths, only for files held by a live CLI.
+    fn live(
+        &self,
+        root: &std::path::Path,
+        paths: &[PathBuf],
+    ) -> Result<std::collections::HashMap<PathBuf, PathBuf>, ()>;
+}
+
 /// Filesystem capacity in bytes, as reported by statvfs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Space {
