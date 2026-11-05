@@ -112,7 +112,12 @@ jobs:
         run: cargo test --locked --features fixtures --lib fixtures
 
       - name: Tauri build without bundling
+        if: runner.os == 'Linux'
         run: npm run tauri -- build --no-bundle
+
+      - name: Build unsigned per-user Windows installer
+        if: runner.os == 'Windows'
+        run: npm run tauri -- build --bundles nsis
 
       - name: Release GUI executable supports silent hooks and status line
         if: runner.os == 'Windows'
@@ -129,5 +134,19 @@ jobs:
         with:
           name: windows-foundation-experimental-unsigned
           path: src-tauri/target/release/kvojps-monitor.exe
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Install and uninstall as a standard Windows user
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/test-windows-installer.ps1
+
+      - name: Windows x64 installer (unsigned)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-installer-unsigned
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
           retention-days: 7
           if-no-files-found: error
