@@ -416,11 +416,11 @@
       <Settings bind:this={settings} {core} {snapshots} {welcome} {appearance} {unavailableModules} back={backToPanel} />
     {/if}
   </div>
-  <OperationsStrip {snapshots} ready={presented && appearanceRestored && nativeVisible && pageVisible} />
   <div class="panel-clock" role="group" aria-label={t.header.clock}>
     <time>{civil === null ? "—" : formatPanelClock(civil)}</time>
     <span>{t.header.systemTime}</span>
   </div>
+  <OperationsStrip {snapshots} ready={presented && appearanceRestored && nativeVisible && pageVisible} />
 </div>
 
 <style>

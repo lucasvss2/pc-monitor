@@ -28,8 +28,8 @@ pub enum PanelMode {
     Compact,
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct PanelPreferences {
     pub mode: PanelMode,
     pub pinned: bool,

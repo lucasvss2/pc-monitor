@@ -73,7 +73,7 @@
 
   <section data-compact-module="tasks" aria-label={t.modules.tasks}>
     <button class="summary tasks" onclick={() => expand("tasks")}>
-      <strong>{t.modules.tasks}{#if tasks} <small>{taskProvider}</small>{/if}</strong>
+      <strong>{t.modules.tasks}{#if tasks}{" "}<small class="provider-label">{taskProvider}</small>{/if}</strong>
       {#if taskBoard && taskCount !== null}
         <span>{taskBoard.name} · {interpolate(t.header.items, { count: String(taskCount) })}</span>
         {#if taskPaused}<small>{t.header.oldReading}</small>{/if}
@@ -129,6 +129,7 @@
   .quota + .quota .bar i { background: var(--band-lavender-text); }
   .summary { display: grid; align-content: start; gap: 4px; background: var(--module-bg); border: 1px solid var(--control-line); border-top: 3px solid var(--band-cyan); }
   .summary.tasks { border-top-color: var(--band-amber); }
+  .provider-label { display: inline-block; margin-inline-start: 3px; padding: 1px 4px; border: 1px solid var(--control-line); border-radius: 4px; font-weight: 400; }
   .summary.github { border-top-color: var(--band-steel); }
   .summary.network { border-top-color: var(--band-blue); }
   .summary.system { border-top-color: var(--band-lavender); }
