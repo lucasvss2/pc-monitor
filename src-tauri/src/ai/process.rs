@@ -8,6 +8,19 @@ use std::sync::mpsc::{channel, Receiver};
 pub struct CodexCli;
 
 impl AppServer for CodexCli {
+    fn installed(&self) -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            crate::ports::Programs::installed(&crate::ports::SystemPrograms, "codex")
+        }
+        #[cfg(windows)]
+        {
+            std::env::var_os("PATH")
+                .and_then(|path| super::windows::codex(&path))
+                .is_some()
+        }
+    }
+
     fn spawn(&mut self) -> Result<Box<dyn Connection>, ()> {
         // stderr is discarded: it may carry account details.
         #[cfg(target_os = "linux")]

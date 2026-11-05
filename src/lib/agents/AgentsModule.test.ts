@@ -246,6 +246,15 @@ it("reaches a notification target that arrives in a later snapshot without movin
 });
 
 it("labels partial native discovery instead of implying complete session coverage", () => {
-  render(AgentsModule, { data: { ...empty, discoveryPartial: true } });
+  render(AgentsModule, { data: { ...empty, discoveryPartial: true, lastSuccessAt: empty.observedAt } });
   expect(screen.getByText("Descoberta de sessões ainda incompleta nesta versão Windows.")).toBeVisible();
+});
+
+it("offers instant detection when no automatic session query is available", async () => {
+  const configure = vi.fn();
+  render(AgentsModule, { data: { ...empty, discoveryPartial: true }, configure });
+  expect(screen.getByRole("status")).toHaveTextContent("Consulta automática de sessões indisponível");
+  expect(screen.queryByText(/Não foi possível consultar/)).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Configurar" }));
+  expect(configure).toHaveBeenCalledOnce();
 });

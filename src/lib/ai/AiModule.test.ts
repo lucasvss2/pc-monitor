@@ -90,13 +90,11 @@ it("keeps an old reading with its time, naming the date once it is a day old", a
   expect(within(provider("Codex")).getByText("Leitura 30/10, 11:33")).toBeInTheDocument();
 });
 
-it("replaces a missing CLI's instruments with an explanation, keeping the other provider", async () => {
+it("omits an uninstalled CLI and gives the installed provider the available space", async () => {
   const { default: missing } = await import("./fixtures/missing.json");
   const data = { ...(missing as AiData), claude: usage.claude as AiData["claude"] };
   render(AiModule, { data, refresh: vi.fn() });
-  const codex = provider("Codex");
-  expect(within(codex).getByText("Codex não encontrado · instale e faça login no CLI")).toBeInTheDocument();
-  expect(within(codex).queryByRole("meter")).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Codex" })).not.toBeInTheDocument();
   expect(within(provider("Claude")).getByRole("meter", { name: "Claude · janela de 5 h" })).toBeInTheDocument();
 });
 
@@ -170,12 +168,11 @@ it("points to Settings before connecting to Claude Code", async () => {
   expect(configure).toHaveBeenCalledOnce();
 });
 
-it("explains a missing Claude Code without a way to configure it", async () => {
+it("omits Claude Code when it is not installed", async () => {
   const { default: claudeMissing } = await import("./fixtures/claude-missing.json");
   render(AiModule, { data: claudeMissing as AiData, refresh: vi.fn() });
-  const claude = provider("Claude");
-  expect(within(claude).getByText("Claude Code não encontrado · instale e faça login no CLI")).toBeInTheDocument();
-  expect(within(claude).queryByRole("button")).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Claude" })).not.toBeInTheDocument();
+  expect(provider("Codex")).toBeInTheDocument();
 });
 
 it("shows an expired Claude token and keeps the status line reading", async () => {
@@ -264,8 +261,9 @@ it("shows remaining weekly allowance when the reading has no five hour window", 
   bucket.secondary = null;
   render(AiModule, { data: onlyWeekly, refresh: vi.fn() });
   const codex = provider("Codex");
-  expect(within(codex).getByRole("img", { name: "Codex · janela de 5 h: Sem leitura dos limites" })).toBeInTheDocument();
+  expect(within(codex).queryByRole("img", { name: /janela de 5 h/ })).not.toBeInTheDocument();
   const weekly = within(codex).getByRole("meter", { name: "Codex · semana" });
+  expect(weekly).toHaveTextContent("52%");
   expect(weekly).toHaveAttribute("aria-valuenow", "52");
   expect(weekly).toHaveAttribute("aria-valuetext", "52% restantes");
 });
@@ -343,24 +341,24 @@ it("dismisses action descriptions with Escape before the panel handles it", asyn
   expect(configure).toHaveFocus();
 });
 
-describe("fixed composition without a reading", () => {
+describe("automatic composition without a reading", () => {
   const area = (name: string) => provider(name).querySelector<HTMLElement>(".area");
 
-  it("gives each provider without a reading its own neutral area, under its name", () => {
+  it("shows a neutral area for the installed provider awaiting its first reading", () => {
     render(AiModule, { data: { refreshing: false, codex: { state: "empty", plan: null, reading: null } }, refresh: vi.fn() });
     expect(provider("Codex")).toHaveTextContent(/^Codex/);
     expect(area("Codex")).toHaveAttribute("data-tone", "neutral");
     expect(area("Codex")).toHaveTextContent("◌ Sem leitura dos limites do Codex ainda · use o Codex ou atualize com ↻");
-    expect(area("Claude")).toHaveTextContent("◌ Sem leitura dos limites do Claude ainda");
+    expect(screen.queryByRole("region", { name: "Claude" })).not.toBeInTheDocument();
     expect(screen.queryByRole("meter")).not.toBeInTheDocument();
   });
 
-  it("keeps the other provider's instruments beside an absent one", async () => {
+  it("keeps an installed provider visible when its account is unavailable", async () => {
     const { default: missing } = await import("./fixtures/missing.json");
-    render(AiModule, { data: { ...(missing as AiData), claude: usage.claude as AiData["claude"] }, refresh: vi.fn() });
+    const data: AiData = { ...missing as AiData, codex: { ...missing.codex as AiData["codex"], installed: true } };
+    render(AiModule, { data, refresh: vi.fn() });
     expect(area("Codex")).toHaveAttribute("data-tone", "warn");
-    expect(area("Codex")).toHaveTextContent("⚠ Codex não encontrado · instale e faça login no CLI");
-    expect(area("Claude")).toBeNull();
+    expect(area("Codex")).toHaveTextContent("Codex instalado · verifique a sessão no CLI");
   });
 
   it("offers a new attempt when the first Codex reading failed", async () => {
@@ -430,5 +428,11 @@ it.each(asymmetric)("preserves unknown usage and the other provider in $name", (
   expect(within(provider(name)).queryByRole("meter", { name: `${name} · ${label}` })).not.toBeInTheDocument();
   expect(within(provider(name)).queryByText("0%")).not.toBeInTheDocument();
   expect(within(provider(other)).getAllByRole("meter")).toHaveLength(2);
-  expect(within(provider(name)).getByText(state === "reset" ? /Reiniciado às.*sem leitura nova/ : slot === "primary" ? "Sem leitura dos limites" : "Janela semanal indisponível")).toBeInTheDocument();
+  const region = within(provider(name));
+  if (state === "reset") {
+    expect(region.getByText(/Reiniciado às.*sem leitura nova/)).toBeInTheDocument();
+  } else {
+    expect(region.queryByRole("img", { name: new RegExp(label) })).not.toBeInTheDocument();
+    expect(region.getAllByRole("meter")).toHaveLength(1);
+  }
 });

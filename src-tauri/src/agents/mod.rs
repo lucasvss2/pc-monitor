@@ -8,7 +8,7 @@ mod codex;
 pub(crate) mod desktop;
 pub mod hooks;
 pub mod notifications;
-use crate::ports::{Clock, Processes};
+use crate::ports::{Clock, Processes, Programs};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,10 +118,12 @@ impl Record {
         ))
     }
 }
+type SessionReading = Result<Vec<(Session, bool)>, ()>;
+
 struct Observation {
     started_at: u64,
-    claude: Result<Vec<(Session, bool)>, ()>,
-    codex: Option<Result<Vec<(Session, bool)>, ()>>,
+    claude: Option<SessionReading>,
+    codex: Option<SessionReading>,
 }
 
 pub struct Monitor<P, C> {
@@ -131,6 +133,7 @@ pub struct Monitor<P, C> {
     notifications: notifications::Policy,
     codex: Option<Box<dyn codex::Source>>,
     process: P,
+    programs: Option<Box<dyn Programs>>,
     clock: C,
     next: Option<u64>,
     sessions: Vec<Session>,
@@ -146,6 +149,7 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
             notifications: Default::default(),
             codex: None,
             process,
+            programs: None,
             clock,
             next: None,
             sessions: vec![],
@@ -155,6 +159,10 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
     }
     pub fn with_notifications(mut self, sink: impl notifications::Sink + 'static) -> Self {
         self.notifications = notifications::Policy::new(sink);
+        self
+    }
+    fn with_programs(mut self, programs: impl Programs + 'static) -> Self {
+        self.programs = Some(Box::new(programs));
         self
     }
     #[cfg(target_os = "linux")]
@@ -241,15 +249,15 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
     }
     fn collect(&self) -> Observation {
         let started_at = self.clock.now();
-        let result = self
-            .process
-            .execute("claude", &["agents", "--json", "--all"])
-            .and_then(|json| serde_json::from_str::<Vec<Record>>(&json).map_err(|_| ()))
-            .and_then(|records| {
-                records
-                    .into_iter()
-                    .map(Record::session)
-                    .collect::<Result<Vec<_>, _>>()
+        let claude = self
+            .programs
+            .as_ref()
+            .is_none_or(|programs| programs.installed("claude"))
+            .then(|| {
+                self.process
+                    .execute("claude", &["agents", "--json", "--all"])
+                    .and_then(|json| serde_json::from_str::<Vec<Record>>(&json).map_err(|_| ()))
+                    .and_then(|records| records.into_iter().map(Record::session).collect())
             });
         let codex = self.codex.as_ref().map(|source| {
             source.sessions(
@@ -263,39 +271,31 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
         });
         Observation {
             started_at,
-            claude: result,
+            claude,
             codex,
         }
     }
     fn observe(&mut self, observation: Observation) -> Data {
         let now = self.clock.now();
-        let result = observation.claude;
-        let mut failed = result.is_err();
-        let mut sessions = result.unwrap_or_else(|_| {
-            self.sessions
-                .iter()
-                .filter(|s| s.provider == Provider::Claude)
-                .cloned()
-                .map(|s| (s, true))
-                .collect()
-        });
-        // A missing adapter cannot confirm that a hook-only session has ended.
-        // Keep its last observation under the same unavailable-source policy.
-        let codex = observation.codex.or_else(|| {
-            self.sessions
-                .iter()
-                .any(|s| s.provider == Provider::Codex)
-                .then_some(Err(()))
-        });
-        if let Some(result) = codex {
+        let mut failed = false;
+        let mut polled = false;
+        let mut sessions = Vec::new();
+        for (provider, result) in [
+            (Provider::Claude, observation.claude),
+            (Provider::Codex, observation.codex),
+        ] {
             match result {
-                Ok(records) => sessions.extend(records),
-                Err(()) => {
-                    failed = true;
+                Some(Ok(records)) => {
+                    polled = true;
+                    sessions.extend(records);
+                }
+                other => {
+                    failed |= other.is_some();
+                    // Without a successful query only an explicit hook can end a tracked session.
                     sessions.extend(
                         self.sessions
                             .iter()
-                            .filter(|s| s.provider == Provider::Codex)
+                            .filter(|s| s.provider == provider)
                             .cloned()
                             .map(|s| (s, true)),
                     );
@@ -363,7 +363,7 @@ impl<P: Processes, C: Clock> Monitor<P, C> {
             self.notifications.observe(&self.sessions, &live, now);
             self.sessions = live;
         }
-        if !failed {
+        if polled && !failed {
             self.last_success_at = Some(now);
         }
         self.data(failed)
@@ -474,13 +474,13 @@ fn polling(
     let tracked = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let worker_tracked = tracked.clone();
     std::thread::spawn(move || {
+        let poller = Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock)
+            .with_programs(crate::ports::SystemPrograms);
         #[cfg(target_os = "linux")]
         let mut poller =
-            Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock).with_codex(
-                codex::Adapter::new(root, crate::ports::RootFilesystem::system()),
-            );
+            poller.with_codex(codex::Adapter::new(root, crate::ports::RootFilesystem::system()));
         #[cfg(windows)]
-        let mut poller = Monitor::new(crate::ports::SystemProcesses, crate::ports::SystemClock);
+        let mut poller = poller;
         #[cfg(windows)]
         let _ = root;
         loop {

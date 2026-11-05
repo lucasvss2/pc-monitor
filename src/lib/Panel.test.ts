@@ -346,7 +346,7 @@ describe("AI module in the panel", () => {
     const refreshAi = vi.fn();
     render(Panel, { core: { ...core, refreshAi } });
     const ai = await screen.findByRole("region", { name: "IA" });
-    expect(within(ai).getByText("Sem leitura dos limites do Codex ainda · use o Codex ou atualize com ↻")).toBeInTheDocument();
+    expect(within(ai).getByText("Detectando ferramentas de IA…")).toBeInTheDocument();
     expect(within(ai).getByRole("button", { name: "Configurar IA" })).toBeInTheDocument();
     await userEvent.click(within(ai).getByRole("button", { name: "Atualizar IA" }));
     expect(refreshAi).toHaveBeenCalledOnce();

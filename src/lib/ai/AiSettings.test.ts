@@ -26,6 +26,16 @@ it("does not confirm Codex limits before the first reading", () => {
   expect(within(block("Codex")).queryByText("Codex detectado · plano plus")).not.toBeInTheDocument();
 });
 
+it("reports the detected windows independently for each installed tool", () => {
+  const data = structuredClone(connected) as AiData;
+  const bucket = data.codex.reading!.buckets[0];
+  bucket.primary = bucket.secondary;
+  bucket.secondary = null;
+  render(AiSettings, props(data));
+  expect(within(block("Codex")).getByText("Janelas no Painel · Semanal")).toBeInTheDocument();
+  expect(within(block("Claude")).getByText("Janelas no Painel · 5 h · Semanal")).toBeInTheDocument();
+});
+
 
 it("splits the section into a Claude and a Codex block, each with its own state", () => {
   render(AiSettings, props(connected));

@@ -141,6 +141,7 @@ pub struct Claude<S, P, W, R> {
     clock: R,
     locations: Locations,
     persistence: Box<dyn Persistence>,
+    installed: Option<bool>,
     /// `claude` in PATH and local credentials; None until checked.
     detected: Option<bool>,
     plan: Option<String>,
@@ -180,6 +181,7 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
             clock,
             locations,
             persistence: Box::new(Volatile),
+            installed: None,
             detected: None,
             plan: None,
             status_line: StatusLine::Off,
@@ -658,8 +660,9 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
             self.rejected = None;
             self.usage_pending = true;
         }
-        self.detected =
-            Some(self.programs.installed("claude") && (!self.usage_supported || oauth.is_some()));
+        let installed = self.programs.installed("claude");
+        self.installed = Some(installed);
+        self.detected = Some(installed && (!self.usage_supported || oauth.is_some()));
         if let Some(plan) = oauth.and_then(|oauth| oauth.subscription_type) {
             self.plan = Some(plan);
         }
@@ -752,7 +755,12 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
                 .is_none_or(|at| now.saturating_sub(at) >= CHECK_INTERVAL)
         {
             let shown = |claude: &Self| {
-                let status = (claude.detected, claude.plan.clone(), claude.status_line);
+                let status = (
+                    claude.installed,
+                    claude.detected,
+                    claude.plan.clone(),
+                    claude.status_line,
+                );
                 (status, claude.usage())
             };
             let before = shown(self);
@@ -782,6 +790,7 @@ impl<S: Storage, P: Programs, W: Watch, R: Clock> Claude<S, P, W, R> {
             (_, None) => "empty",
         };
         let mut data = json!({
+            "installed": self.installed,
             "state": state,
             "plan": self.plan,
             "statusLine": self.status_line,

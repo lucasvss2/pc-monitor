@@ -272,7 +272,15 @@ impl Processes for SystemProcesses {
         if program == "xdg-open" {
             return crate::platform::open_external(args);
         }
-        let mut command = std::process::Command::new(program);
+        #[cfg(windows)]
+        let executable = if program == "claude" {
+            crate::platform::find_program(program).ok_or(())?
+        } else {
+            std::path::PathBuf::from(program)
+        };
+        #[cfg(not(windows))]
+        let executable = program;
+        let mut command = std::process::Command::new(executable);
         command.args(args);
         #[cfg(windows)]
         {

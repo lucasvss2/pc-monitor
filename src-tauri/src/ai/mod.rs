@@ -31,6 +31,8 @@ use serde_json::{json, Value};
 
 /// Starts `codex app-server` (JSON-RPC over stdio).
 pub trait AppServer: Send {
+    /// Installation is independent of whether the current account has limits.
+    fn installed(&self) -> bool;
     /// Err when the CLI is missing or does not start.
     fn spawn(&mut self) -> Result<Box<dyn Connection>, ()>;
 }
@@ -111,6 +113,7 @@ pub struct Codex<A, F, R> {
     retry_at: u64,
     plan: Option<String>,
     reading: Option<Reading>,
+    installed: Option<bool>,
     /// `codex` started and `account/read` found a login; None until known.
     detected: Option<bool>,
 }
@@ -137,6 +140,7 @@ impl<A: AppServer, F: Files, R: Clock> Codex<A, F, R> {
             retry_at: 0,
             plan: None,
             reading: None,
+            installed: None,
             detected: None,
         }
     }
@@ -178,6 +182,7 @@ impl<A: AppServer, F: Files, R: Clock> Codex<A, F, R> {
         let mut data = json!({
             "refreshing": self.querying(),
             "codex": {
+                "installed": self.installed,
                 "state": state,
                 "plan": self.plan,
                 "reading": reading,
@@ -279,8 +284,12 @@ impl<A: AppServer, F: Files, R: Clock> Codex<A, F, R> {
             .is_none_or(|at| now.saturating_sub(at) >= RESTART_WAIT);
         if self.connection.is_none() && restart {
             self.spawn_at = Some(now);
+            self.installed = Some(self.server.installed());
             match self.server.spawn() {
-                Ok(connection) => self.connection = Some(connection),
+                Ok(connection) => {
+                    self.installed = Some(true);
+                    self.connection = Some(connection);
+                }
                 Err(()) => {
                     self.detected = Some(false);
                     self.operations.unavailable();

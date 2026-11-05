@@ -3,6 +3,7 @@
   import type { AiData, AiReading, AiWindow } from "../core";
   import { t, interpolate } from "../strings";
   import AbsentArea, { type Absence } from "../AbsentArea.svelte";
+  import { installed, usageWindows } from "./profile";
 
   /** Renders the top of the "IA e Agentes" card: its shared heading and the AI instruments. */
   let { data, refresh, configure = () => {}, reconnect = () => {} }:
@@ -70,21 +71,6 @@
       ? t.ai.noReading : interpolate(t.ai.restarted, { time: clock.format(window.resetsAt) });
   }
 
-  const FIVE_HOURS = 300;
-  const WEEK = 10080;
-
-  /**
-   * The window of that duration in the bucket covering every model; per model
-   * buckets stay out of the panel. A window without a duration keeps its slot.
-   */
-  function windowOf(reading: AiReading | null, durationMins: typeof FIVE_HOURS | typeof WEEK) {
-    const bucket = reading?.buckets.find((b) => b.name === null) ?? reading?.buckets[0];
-    if (!bucket) return null;
-    const slot = durationMins === FIVE_HOURS ? bucket.primary : bucket.secondary;
-    return [bucket.primary, bucket.secondary].find((w) => w?.durationMins === durationMins)
-      ?? (slot?.durationMins == null ? slot : null);
-  }
-
   const actions = {
     configure: { label: t.ai.configure, run: () => configure() },
     reconnect: { label: t.ai.reconnect, run: () => reconnect() },
@@ -118,7 +104,7 @@
 
   function codexOf(codex: AiData["codex"]): Provider {
     const base = { name: t.ai.codex, tone: "var(--accent)" };
-    if (codex.state === "missing") return { ...base, reading: null, absence: { text: t.ai.missingCodex, tone: "warn" }, notices: [] };
+    if (codex.state === "missing") return { ...base, reading: null, absence: { text: t.ai.codexNeedsSession, tone: "warn" }, notices: [] };
     if (!codex.reading) return {
       ...base, reading: null, notices: pausedNotice(data.paused),
       absence: codex.failureSince != null && !data.paused ? failedFirst(codex.failureSince) : { text: t.ai.emptyCodex, tone: "neutral" },
@@ -128,10 +114,8 @@
   }
 
   /** Each provider is independent: Claude's state never hides Codex. */
-  function claudeOf(claude: AiData["claude"]): Provider {
+  function claudeOf(claude: NonNullable<AiData["claude"]>): Provider {
     const base = { name: t.ai.claude, tone: "var(--band-lavender-text)" };
-    if (!claude) return { ...base, reading: null, absence: { text: t.ai.noReadingClaude, tone: "neutral" }, notices: [] };
-    if (claude.state === "missing") return { ...base, reading: null, absence: { text: t.ai.missingClaude, tone: "warn" }, notices: [] };
     const off = claude.statusLine === "off" && claude.usage !== "on";
     if (!claude.reading) {
       const failing = claude.usage === "on" && claude.failureSince != null && !claude.paused;
@@ -158,7 +142,12 @@
     refresh();
   }
 
-  const providers = $derived([codexOf(data.codex), claudeOf(data.claude)]);
+  const providers = $derived.by(() => {
+    const visible: Provider[] = [];
+    if (installed(data.codex)) visible.push(codexOf(data.codex));
+    if (data.claude && installed(data.claude)) visible.push(claudeOf(data.claude));
+    return visible;
+  });
 </script>
 
 {#snippet rings(arc: number | null)}
@@ -171,8 +160,7 @@
   </svg>
 {/snippet}
 
-{#snippet dial(provider: string, window: AiWindow | null, percent: number | null)}
-  {@const name = interpolate(t.ai.fiveHourOf, { provider })}
+{#snippet dial(name: string, window: AiWindow | null, percent: number | null)}
   {#if percent === null}
     <div class="dial" role="img" aria-label="{name}: {missing(window)}">
       {@render rings(null)}<span class="reading num" aria-hidden="true">—</span>
@@ -205,7 +193,11 @@
 </header>
 {#if data.refreshing}<small role="status" class="line">{t.ai.refreshing}</small>{/if}
 
-<div class="instruments">
+{#if providers.length === 0}
+  <p class="line" role="status">{data.codex.installed === null || data.claude?.installed === null
+    ? t.ai.checkingTools : t.ai.noTools}</p>
+{/if}
+<div class="instruments" class:single={providers.length === 1}>
   {#each providers as provider (provider.name)}
     {#if provider.absence}
       <section class="provider absent" aria-label={provider.name}>
@@ -214,18 +206,34 @@
         <AbsentArea absence={provider.absence} />
       </section>
     {:else}
-      {@const five = windowOf(provider.reading, FIVE_HOURS)}
-      {@const week = windowOf(provider.reading, WEEK)}
+      {@const { five, week } = usageWindows(provider.reading)}
       {@const fivePercent = remainingPercent(five)}
       {@const weekPercent = remainingPercent(week)}
+      {@const weeklyOnly = five === null && week !== null}
       <section class="provider" aria-label={provider.name} style:--instrument={provider.tone} data-stale={provider.old}>
         <div class="instrument">
-          {@render dial(provider.name, five, fivePercent)}
+          {#if weeklyOnly}
+            {@render dial(interpolate(t.ai.weeklyOf, { provider: provider.name }), week, weekPercent)}
+          {:else if five}
+            {@render dial(interpolate(t.ai.fiveHourOf, { provider: provider.name }), five, fivePercent)}
+          {/if}
           <h3>{provider.name}</h3>
-          <small>{fivePercent === null ? t.ai.fiveHour : five?.resetsAt == null ? t.ai.fiveHourRemaining
-            : interpolate(t.ai.fiveHourResets, { time: clock.format(five.resetsAt) })}</small>
-          {#if fivePercent === null}<small class="line">{missing(five)}</small>{/if}
+          {#if weeklyOnly}
+            <small>{t.ai.weeklyLabel}</small>
+            {#if weekPercent === null}
+              <small class="line">{missing(week) === t.ai.noReading ? t.ai.weeklyUnavailable : missing(week)}</small>
+            {:else if week.resetsAt != null}
+              <small>{interpolate(t.ai.weeklyResets, { date: date.format(week.resetsAt) })}</small>
+            {/if}
+          {:else if five}
+            <small>{fivePercent === null ? t.ai.fiveHour : five.resetsAt == null ? t.ai.fiveHourRemaining
+              : interpolate(t.ai.fiveHourResets, { time: clock.format(five.resetsAt) })}</small>
+            {#if fivePercent === null}<small class="line">{missing(five)}</small>{/if}
+          {:else}
+            <small class="line">{t.ai.noReading}</small>
+          {/if}
         </div>
+        {#if week && !weeklyOnly}
         <div class="meter">
           <div class="meter-label"><span>{t.ai.weeklyLabel}</span><b class="num">{weekPercent === null ? "—" : `${weekPercent}%`}</b></div>
           {#if weekPercent !== null}
@@ -236,10 +244,10 @@
             {#if week?.resetsAt != null}<small>{interpolate(t.ai.weeklyResets, { date: date.format(week.resetsAt) })}</small>{/if}
           {:else}
             <div class="track" aria-hidden="true"></div>
-            <!-- B keeps the weekly slot: a missing week says so in it, a restarted one says when. -->
             <small>{missing(week) === t.ai.noReading ? t.ai.weeklyUnavailable : missing(week)}</small>
           {/if}
         </div>
+        {/if}
         {#if provider.reading}
           <small class="source"><time datetime={new Date(provider.reading.readAt).toISOString()}>{readAt(provider.reading.readAt)}</time></small>
         {/if}
@@ -262,13 +270,17 @@
   .tip { position: absolute; z-index: 4; right: 0; top: 100%; min-width: 150px; background: var(--surface-2); color: var(--text); padding: 9px; border: 1px solid var(--control-line); box-shadow: 0 4px 20px #0006; font-size: 12px; font-weight: 400; visibility: hidden; }
   .action-wrap:hover .tip, .action-wrap:focus-within .tip { visibility: visible; }
   .instruments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; align-items: start; }
+  .instruments.single { grid-template-columns: minmax(0, 1fr); }
   /* Shared rows let either explanation grow without moving only one weekly meter. */
   .provider { min-width: 0; display: grid; grid-row: span 4; grid-template-rows: subgrid; }
   /* An absent provider keeps its column: as tall as the other one, or as a B column with the current dial. */
   .provider.absent { display: flex; flex-direction: column; align-self: stretch; --absent-min: calc(var(--dial, 94px) + 96px); }
   .provider.absent h3 { text-align: center; margin-bottom: 6px; }
   .provider[data-stale="true"] :is(.dial, .meter) { opacity: .45; }
-  .instrument { align-self: start; text-align: center; display: flex; flex-direction: column; }
+  .instrument { grid-row: 1; align-self: start; text-align: center; display: flex; flex-direction: column; }
+  .meter { grid-row: 2; }
+  .source { grid-row: 3; }
+  .notices { grid-row: 4; }
   /* --dial grows with the free height of the card (Panel); never wider than the column. */
   .dial { position: relative; width: min(var(--dial, 94px), 100%); aspect-ratio: 1; margin: auto; container-type: inline-size; }
   .dial svg { width: 100%; height: 100%; display: block; }

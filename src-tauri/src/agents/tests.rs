@@ -10,6 +10,28 @@ impl Processes for Process {
         self.0.lock().unwrap().clone()
     }
 }
+
+#[test]
+fn absent_claude_is_not_polled_or_reported_as_a_failed_query() {
+    struct AbsentClaude;
+    impl Programs for AbsentClaude {
+        fn installed(&self, program: &str) -> bool {
+            assert_eq!(program, "claude");
+            false
+        }
+    }
+    struct UnexpectedProcess;
+    impl Processes for UnexpectedProcess {
+        fn execute(&self, _: &str, _: &[&str]) -> Result<String, ()> {
+            panic!("absent CLI was executed")
+        }
+    }
+    let mut monitor =
+        Monitor::new(UnexpectedProcess, FakeClock::at(1800000000000)).with_programs(AbsentClaude);
+    let data = monitor.step().unwrap();
+    assert!(!data.failed);
+    assert!(data.last_success_at.is_none());
+}
 #[test]
 fn recorded_blocked_session_sets_accent_and_polling_runs_every_two_seconds() {
     let process = Process(Arc::new(Mutex::new(Ok(include_str!(
@@ -628,8 +650,8 @@ fn codex_hook_without_polling_is_not_closed_by_an_unrelated_claude_read() {
         assert_eq!(data.sessions.len(), 1);
         assert_eq!(data.sessions[0].id, "codex:synthetic-waiting");
         assert_eq!(data.sessions[0].state, SessionState::Waiting);
-        assert!(data.failed);
-        assert_eq!(data.last_success_at, baseline);
+        assert!(!data.failed);
+        assert!(data.last_success_at > baseline);
         assert!(data.closed.iter().any(|s| s.id == "synthetic-working"));
         assert!(notifications.1.lock().unwrap().is_empty());
     }

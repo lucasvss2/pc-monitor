@@ -122,7 +122,7 @@
     reveal("agents", false);
   }
 
-  const NO_AI_READING: AiData = { refreshing: false, codex: { state: "empty", plan: null, reading: null } };
+  const NO_AI_READING: AiData = { refreshing: false, codex: { installed: null, state: "empty", plan: null, reading: null } };
   const bodies: Record<Module, Snippet> = { ai, agents, github, tasks, network, system };
 
   const supportingModules: Module[] = ["github", "network", "tasks", "system"];

@@ -71,14 +71,17 @@ pub fn open_external(args: &[&str]) -> Result<String, ()> {
 pub struct SystemPrograms;
 impl Programs for SystemPrograms {
     fn installed(&self, name: &str) -> bool {
-        std::env::var_os("PATH").is_some_and(|paths| {
-            std::env::split_paths(&paths).any(|dir| {
-                ["", ".exe", ".cmd", ".bat"]
-                    .iter()
-                    .any(|extension| dir.join(format!("{name}{extension}")).is_file())
-            })
-        })
+        find_program(name).is_some()
     }
+}
+
+pub fn find_program(name: &str) -> Option<std::path::PathBuf> {
+    let paths = std::env::var_os("PATH")?;
+    std::env::split_paths(&paths)
+        .flat_map(|dir| {
+            [".exe", ".cmd", ".bat"].map(move |extension| dir.join(format!("{name}{extension}")))
+        })
+        .find(|path| path.is_file())
 }
 
 /// Polling fallback: the collector owns its cadence and rereads through Files.

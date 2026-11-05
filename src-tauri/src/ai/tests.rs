@@ -84,6 +84,10 @@ impl Server {
     }
 }
 impl AppServer for Server {
+    fn installed(&self) -> bool {
+        !*self.missing.lock().unwrap()
+    }
+
     fn spawn(&mut self) -> Result<Box<dyn Connection>, ()> {
         if *self.missing.lock().unwrap() {
             return Err(());
@@ -131,6 +135,7 @@ fn app_server_reading_shows_plan_and_both_windows() {
     assert_eq!(
         data["codex"],
         json!({
+            "installed": true,
             "state": "ready",
             "operation": {"id":1,"origin":"automatic","state":"succeeded"},
             "plan": "plus",
@@ -488,6 +493,7 @@ fn restart_shows_the_cached_reading_before_any_query() {
         .snapshot();
     assert_eq!(restored.updated_at, Some(NOW));
     let mut expected = fresh.data["codex"].clone();
+    expected["installed"] = Value::Null;
     expected.as_object_mut().unwrap().remove("operation");
     assert_eq!(restored.data["codex"], expected);
 }

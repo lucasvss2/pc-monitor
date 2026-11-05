@@ -55,3 +55,9 @@ A [CI 42075201282](https://github.com/lucasvss2/pc-monitor/actions/runs/42075201
 Após autorização do usuário, a revisão corrigida iniciou como única instância e obteve uma leitura do app-server após a abertura. O usuário confirmou que a porcentagem restante semanal no Painel coincide com a do Codex. Duas versões temporárias anteriores foram removidas após verificar o hash, a ausência de processos ativos e as referências do Windows.
 
 Pendências: repetir arraste, X e Escape. O aceite Claude real depende da disponibilidade do CLI. A descoberta de Sessões de agente continua parcial no Windows. Esse próximo incremento exige evidência de execução viva. Trello e aceite gráfico Ubuntu continuam adiados conforme orientação do usuário.
+
+## Apresentação automática por ferramenta
+
+Em 05/11/2026, o usuário confirmou que o Painel deve adaptar a apresentação às ferramentas instaladas e às janelas retornadas por cada uma. A ausência de uma ferramenta libera seu espaço, a janela semanal sozinha ocupa o mostrador principal e as Configurações identificam as janelas detectadas.
+
+A composição Windows chamava a consulta do Claude mesmo quando seu CLI estava ausente. A consulta agora é pulada nessa situação. Agentes informa quando a descoberta automática está indisponível e mantém a opção de Detecção instantânea com consentimento explícito. A descoberta periódica de sessões vivas do Codex ainda requer um adaptador Windows. Rede e Sistema seguem sem coletores Windows registrados. A conectividade básica usada pelo ciclo de vida não representa as métricas do módulo Rede.

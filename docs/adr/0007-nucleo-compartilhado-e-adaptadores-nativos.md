@@ -6,4 +6,6 @@ O seam uniforme de E/S continua formado por portas pequenas e injetáveis. Concr
 
 A apresentação também usa o mesmo estado de Módulos. Modo preferido salvo e Apresentação contextual são distintos: abrir Configurações, detalhes ou uma notificação pode apresentar o completo com retorno sem substituir a preferência; notificações preservam a Âncora. O controlador deve sobreviver ao fechamento/recriação da webview. Essa separação complementa o ADR 0006 e evita que consultar um detalhe elimine a escolha de acompanhamento reduzido.
 
+O usuário optou por adaptar o Painel de IA automaticamente à instalação local e às janelas informadas por cada ferramenta. O Painel mostra apenas as ferramentas detectadas e dá destaque à cota semanal quando ela é a única janela disponível. As Configurações mostram as janelas de cada ferramenta e mantêm os diagnósticos de conexão. A instalação, a autenticação e a leitura dos limites são sinais distintos.
+
 Decisão confirmada em 04/11/2026. Contratos de geração/revisão, recuperação de limpeza, migração e evidências exigidas estão na [especificação](../../.scratch/jira-windows/spec.md); aprovação não comprova portabilidade já implementada. A resolução e sua origem estão em [Quais fronteiras e evidências tornam a implementação pronta para começar?](../../.scratch/jira-windows/issues/08-architecture-validation.md).

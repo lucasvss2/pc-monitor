@@ -239,6 +239,7 @@ export interface AiData {
   paused?: boolean;
   codex: {
     operation?: Operation;
+    installed?: boolean | null;
     state: "missing" | "empty" | "ready";
     /** First of at least three consecutive failed queries. */
     failureSince?: number | null;
@@ -248,6 +249,7 @@ export interface AiData {
   };
   claude?: {
     operation?: Operation;
+    installed?: boolean | null;
     state: "missing" | "empty" | "ready";
     /** Claude subscriptionType, e.g. pro or max. */
     plan: string | null;

@@ -120,9 +120,14 @@
 <div class="agents" onfocusin={(event) => { if (restoringFocus) event.stopPropagation(); }}>
   {#if absence}
     <AbsentArea {absence} />
+  {:else if data?.discoveryPartial && data.lastSuccessAt == null && shown.length === 0}
+    <div class="waiting calm" role="status">
+      <span>{data.hooksEnabled ? t.agents.waitingForHookEvents : t.agents.noAutomaticDiscovery}</span>
+      {#if !data.hooksEnabled}<button class="see" onclick={configure}>{t.absent.configure}</button>{/if}
+    </div>
   {:else}
   {#if data?.discoveryPartial}
-    <small class="line" role="status">Descoberta de sessões ainda incompleta nesta versão Windows.</small>
+    <small class="line" role="status">{t.agents.partialDiscovery}</small>
   {/if}
   {#if data?.failed}
     <small role="status" class="line alert"><span aria-hidden="true">{"⚠ "}</span>{[t.agents.failure, data.lastSuccessAt != null && interpolate(t.agents.lastRead, { time: time.format(data.lastSuccessAt) })].filter(Boolean).join(" · ")}</small>

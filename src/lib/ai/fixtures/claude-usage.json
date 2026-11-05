@@ -1,5 +1,6 @@
 {
   "codex": {
+    "installed": true,
     "plan": "plus",
     "reading": {
       "buckets": [
@@ -32,6 +33,7 @@
   },
   "refreshing": false,
   "claude": {
+    "installed": true,
     "state": "ready",
     "plan": "pro",
     "statusLine": "off",
