@@ -58,26 +58,6 @@ jobs:
         working-directory: src-tauri
         run: cargo fmt --check
 
-      # Temporary diagnostic: the host policy blocks the standalone formatter.
-      - name: Prepare formatted sources for local review
-        if: failure()
-        working-directory: src-tauri
-        run: cargo fmt
-
-      - name: Formatted source diagnostic
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rustfmt-sources-${{ matrix.os }}
-          path: |
-            src-tauri/src/system/gpu.rs
-            src-tauri/src/system/mod.rs
-            src-tauri/src/system/readings.rs
-            src-tauri/src/platform/windows/gpu.rs
-            src-tauri/src/platform/windows/system.rs
-            src-tauri/src/platform/windows/mod.rs
-          retention-days: 1
-
       - name: svelte-check
         run: npm run check
 

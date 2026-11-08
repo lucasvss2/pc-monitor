@@ -8,7 +8,12 @@ type RawFunction = unsafe extern "system" fn() -> isize;
 #[link(name = "pdh")]
 unsafe extern "system" {
     fn PdhOpenQueryW(source: *const u16, data: usize, query: *mut isize) -> u32;
-    fn PdhAddEnglishCounterW(query: isize, path: *const u16, data: usize, counter: *mut isize) -> u32;
+    fn PdhAddEnglishCounterW(
+        query: isize,
+        path: *const u16,
+        data: usize,
+        counter: *mut isize,
+    ) -> u32;
     fn PdhCollectQueryData(query: isize) -> u32;
     fn PdhGetFormattedCounterArrayW(
         counter: isize,
@@ -114,7 +119,13 @@ fn adapters() -> Result<Vec<Adapter>, ()> {
 }
 
 fn pci_address(id: u64) -> Option<PciAddress> {
-    let mut adapter = OpenAdapter { luid: NativeLuid { low: id as u32, high: (id >> 32) as i32 }, handle: 0 };
+    let mut adapter = OpenAdapter {
+        luid: NativeLuid {
+            low: id as u32,
+            high: (id >> 32) as i32,
+        },
+        handle: 0,
+    };
     if unsafe { D3DKMTOpenAdapterFromLuid(&mut adapter) } != 0 {
         return None;
     }
@@ -126,7 +137,11 @@ fn pci_address(id: u64) -> Option<PciAddress> {
         bytes: size_of::<PciAddress>() as u32,
     };
     let status = unsafe { D3DKMTQueryAdapterInfo(&query) };
-    unsafe { D3DKMTCloseAdapter(&CloseAdapter { handle: adapter.handle }) };
+    unsafe {
+        D3DKMTCloseAdapter(&CloseAdapter {
+            handle: adapter.handle,
+        })
+    };
     (status == 0).then_some(pci)
 }
 
@@ -142,8 +157,14 @@ impl Counters {
         if unsafe { PdhOpenQueryW(std::ptr::null(), 0, &mut query) } != 0 {
             return None;
         }
-        let mut result = Self { query, counter: 0, primed: false };
-        let path: Vec<_> = "\\GPU Engine(*)\\Utilization Percentage\0".encode_utf16().collect();
+        let mut result = Self {
+            query,
+            counter: 0,
+            primed: false,
+        };
+        let path: Vec<_> = "\\GPU Engine(*)\\Utilization Percentage\0"
+            .encode_utf16()
+            .collect();
         if unsafe { PdhAddEnglishCounterW(query, path.as_ptr(), 0, &mut result.counter) } != 0 {
             return None;
         }
@@ -161,7 +182,13 @@ impl Counters {
         let (mut bytes, mut count) = (0, 0);
         const FORMAT: u32 = 0x200 | 0x8000; // PDH_FMT_DOUBLE | PDH_FMT_NOCAP100.
         let status = unsafe {
-            PdhGetFormattedCounterArrayW(self.counter, FORMAT, &mut bytes, &mut count, std::ptr::null_mut())
+            PdhGetFormattedCounterArrayW(
+                self.counter,
+                FORMAT,
+                &mut bytes,
+                &mut count,
+                std::ptr::null_mut(),
+            )
         };
         if status != 0x800007d2 || bytes == 0 || bytes > 16 * 1024 * 1024 {
             return Err(());
@@ -169,14 +196,25 @@ impl Counters {
         // The API stores pointers and doubles in this buffer; keep it 8-byte aligned.
         let mut buffer = vec![0u64; (bytes as usize).div_ceil(8)];
         let status = unsafe {
-            PdhGetFormattedCounterArrayW(self.counter, FORMAT, &mut bytes, &mut count, buffer.as_mut_ptr().cast())
+            PdhGetFormattedCounterArrayW(
+                self.counter,
+                FORMAT,
+                &mut bytes,
+                &mut count,
+                buffer.as_mut_ptr().cast(),
+            )
         };
         if status != 0 || count as usize > buffer.len() * 8 / size_of::<CounterItem>() {
             return Err(());
         }
-        let items = unsafe { std::slice::from_raw_parts(buffer.as_ptr().cast::<CounterItem>(), count as usize) };
+        let items = unsafe {
+            std::slice::from_raw_parts(buffer.as_ptr().cast::<CounterItem>(), count as usize)
+        };
         let mut samples = Vec::new();
-        let (start, end) = (buffer.as_ptr() as usize, buffer.as_ptr() as usize + buffer.len() * 8);
+        let (start, end) = (
+            buffer.as_ptr() as usize,
+            buffer.as_ptr() as usize + buffer.len() * 8,
+        );
         for item in items {
             if item.value.status > 1 {
                 continue;
@@ -186,7 +224,9 @@ impl Counters {
                 continue;
             }
             let name = unsafe { std::slice::from_raw_parts(item.name, (end - address) / 2) };
-            let Some(length) = name.iter().position(|ch| *ch == 0) else { continue };
+            let Some(length) = name.iter().position(|ch| *ch == 0) else {
+                continue;
+            };
             let name = String::from_utf16_lossy(&name[..length]);
             if let Some(sample) = EngineSample::parse(&name, item.value.double) {
                 samples.push(sample);
@@ -262,15 +302,28 @@ impl Nvidia {
         // These function signatures follow the public NVML C ABI. The owning
         // library outlives every function pointer and device handle used here.
         unsafe {
-            let initialize = std::mem::transmute::<RawFunction, Init>(library.symbol(b"nvmlInit_v2\0")?);
+            let initialize =
+                std::mem::transmute::<RawFunction, Init>(library.symbol(b"nvmlInit_v2\0")?);
             let mut result = Self {
                 initialized: false,
-                shutdown: std::mem::transmute::<RawFunction, Init>(library.symbol(b"nvmlShutdown\0")?),
-                count: std::mem::transmute::<RawFunction, Count>(library.symbol(b"nvmlDeviceGetCount_v2\0")?),
-                handle: std::mem::transmute::<RawFunction, Handle>(library.symbol(b"nvmlDeviceGetHandleByIndex_v2\0")?),
-                pci: std::mem::transmute::<RawFunction, PciInfo>(library.symbol(b"nvmlDeviceGetPciInfo_v3\0")?),
-                temperature: std::mem::transmute::<RawFunction, Temperature>(library.symbol(b"nvmlDeviceGetTemperature\0")?),
-                temperature_v: library.symbol(b"nvmlDeviceGetTemperatureV\0").map(|pointer| std::mem::transmute::<RawFunction, TemperatureV>(pointer)),
+                shutdown: std::mem::transmute::<RawFunction, Init>(
+                    library.symbol(b"nvmlShutdown\0")?,
+                ),
+                count: std::mem::transmute::<RawFunction, Count>(
+                    library.symbol(b"nvmlDeviceGetCount_v2\0")?,
+                ),
+                handle: std::mem::transmute::<RawFunction, Handle>(
+                    library.symbol(b"nvmlDeviceGetHandleByIndex_v2\0")?,
+                ),
+                pci: std::mem::transmute::<RawFunction, PciInfo>(
+                    library.symbol(b"nvmlDeviceGetPciInfo_v3\0")?,
+                ),
+                temperature: std::mem::transmute::<RawFunction, Temperature>(
+                    library.symbol(b"nvmlDeviceGetTemperature\0")?,
+                ),
+                temperature_v: library
+                    .symbol(b"nvmlDeviceGetTemperatureV\0")
+                    .map(|pointer| std::mem::transmute::<RawFunction, TemperatureV>(pointer)),
                 _library: library,
             };
             if initialize() != 0 {
@@ -282,7 +335,9 @@ impl Nvidia {
     }
 
     fn read(&self, address: Option<PciAddress>) -> GpuReading {
-        let Some(address) = address else { return GpuReading::Unavailable };
+        let Some(address) = address else {
+            return GpuReading::Unavailable;
+        };
         let mut count = 0;
         if unsafe { (self.count)(&mut count) } != 0 || count > 32 {
             return GpuReading::Failed;
@@ -291,17 +346,28 @@ impl Nvidia {
         for index in 0..count {
             let mut handle = std::ptr::null_mut();
             let mut pci: NvidiaPci = unsafe { std::mem::zeroed() };
-            if unsafe { (self.handle)(index, &mut handle) } != 0 || handle.is_null()
+            if unsafe { (self.handle)(index, &mut handle) } != 0
+                || handle.is_null()
                 || unsafe { (self.pci)(handle, &mut pci) } != 0
             {
                 continue;
             }
             // A missing/ambiguous PCI association must never attach another GPU's sensor.
-            let id: Vec<u8> = pci.bus_id.iter().take_while(|ch| **ch != 0).map(|ch| *ch as u8).collect();
+            let id: Vec<u8> = pci
+                .bus_id
+                .iter()
+                .take_while(|ch| **ch != 0)
+                .map(|ch| *ch as u8)
+                .collect();
             let id = String::from_utf8_lossy(&id);
-            let function = id.rsplit_once('.').and_then(|(_, value)| u32::from_str_radix(value, 16).ok());
-            if pci.domain == 0 && pci.bus == address.bus && pci.device == address.device
-                && function == Some(address.function) && pci.device_id & 0xffff == 0x10de
+            let function = id
+                .rsplit_once('.')
+                .and_then(|(_, value)| u32::from_str_radix(value, 16).ok());
+            if pci.domain == 0
+                && pci.bus == address.bus
+                && pci.device == address.device
+                && function == Some(address.function)
+                && pci.device_id & 0xffff == 0x10de
             {
                 matches.push(handle);
             }
@@ -311,7 +377,11 @@ impl Nvidia {
         }
         let handle = matches[0];
         if let Some(read) = self.temperature_v {
-            let mut data = NvidiaTemperature { version: size_of::<NvidiaTemperature>() as u32 | (1 << 24), sensor: 0, temperature: 0 };
+            let mut data = NvidiaTemperature {
+                version: size_of::<NvidiaTemperature>() as u32 | (1 << 24),
+                sensor: 0,
+                temperature: 0,
+            };
             let status = unsafe { read(handle, &mut data) };
             if status == 0 {
                 return GpuReading::temperature(f64::from(data.temperature));
@@ -350,7 +420,10 @@ impl GraphicsReader {
     pub fn read(&mut self) -> Graphics {
         let Ok(adapters) = adapters() else {
             self.reset();
-            return Graphics { devices: Vec::new(), failed: true };
+            return Graphics {
+                devices: Vec::new(),
+                failed: true,
+            };
         };
         if self.counters.is_none() {
             self.counters = Counters::open();
@@ -359,21 +432,34 @@ impl GraphicsReader {
         if self.nvidia.is_none() && adapters.iter().any(|adapter| adapter.nvidia) {
             self.nvidia = Nvidia::open();
         }
-        let devices = adapters.into_iter().map(|adapter| {
-            let usage = match &readings {
-                Some(Ok(Some(samples))) => utilization(adapter.id, samples),
-                Some(Ok(None)) => GpuReading::Measuring,
-                Some(Err(())) => GpuReading::Failed,
-                None => GpuReading::Unavailable,
-            };
-            let temperature = if adapter.nvidia {
-                self.nvidia.as_ref().map(|nvidia| nvidia.read(adapter.pci)).unwrap_or(GpuReading::Unavailable)
-            } else {
-                GpuReading::Unavailable
-            };
-            Gpu { label: adapter.label, usage, temperature }
-        }).collect();
-        Graphics { devices, failed: false }
+        let devices = adapters
+            .into_iter()
+            .map(|adapter| {
+                let usage = match &readings {
+                    Some(Ok(Some(samples))) => utilization(adapter.id, samples),
+                    Some(Ok(None)) => GpuReading::Measuring,
+                    Some(Err(())) => GpuReading::Failed,
+                    None => GpuReading::Unavailable,
+                };
+                let temperature = if adapter.nvidia {
+                    self.nvidia
+                        .as_ref()
+                        .map(|nvidia| nvidia.read(adapter.pci))
+                        .unwrap_or(GpuReading::Unavailable)
+                } else {
+                    GpuReading::Unavailable
+                };
+                Gpu {
+                    label: adapter.label,
+                    usage,
+                    temperature,
+                }
+            })
+            .collect();
+        Graphics {
+            devices,
+            failed: false,
+        }
     }
 }
 

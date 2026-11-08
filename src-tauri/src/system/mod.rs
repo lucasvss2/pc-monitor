@@ -1,9 +1,9 @@
 //! System module: CPU, temperature, RAM, disks and battery, collected only while visible.
 
 pub(crate) mod battery;
-mod readings;
 #[cfg(any(windows, test))]
 pub(crate) mod gpu;
+mod readings;
 #[cfg(any(windows, test))]
 pub(crate) use gpu::Graphics;
 
@@ -326,32 +326,52 @@ mod tests {
 
     #[test]
     fn graphics_use_the_existing_io_port_and_reset_on_resume() {
-        use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+        use std::sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        };
         struct Source {
             reads: Arc<AtomicUsize>,
             resets: Arc<AtomicUsize>,
         }
         impl Readings for Source {
-            fn cpu(&self) -> Result<Jiffies, ()> { Err(()) }
+            fn cpu(&self) -> Result<Jiffies, ()> {
+                Err(())
+            }
             fn memory(&self) -> Result<(Memory, Option<Memory>), ()> {
                 Ok((Memory { used: 1, total: 2 }, None))
             }
-            fn disks(&self) -> Result<Vec<Disk>, ()> { Ok(Vec::new()) }
-            fn battery(&self) -> Result<Option<Battery>, ()> { Ok(None) }
-            fn reset_graphics(&self) { self.resets.fetch_add(1, Ordering::SeqCst); }
+            fn disks(&self) -> Result<Vec<Disk>, ()> {
+                Ok(Vec::new())
+            }
+            fn battery(&self) -> Result<Option<Battery>, ()> {
+                Ok(None)
+            }
+            fn reset_graphics(&self) {
+                self.resets.fetch_add(1, Ordering::SeqCst);
+            }
             fn graphics(&self) -> Option<Graphics> {
                 self.reads.fetch_add(1, Ordering::SeqCst);
-                Some(Graphics { failed: false, devices: vec![gpu::Gpu {
-                    label: "GPU 0 · NVIDIA".into(),
-                    usage: gpu::GpuReading::Measuring,
-                    temperature: gpu::GpuReading::Unavailable,
-                }] })
+                Some(Graphics {
+                    failed: false,
+                    devices: vec![gpu::Gpu {
+                        label: "GPU 0 · NVIDIA".into(),
+                        usage: gpu::GpuReading::Measuring,
+                        temperature: gpu::GpuReading::Unavailable,
+                    }],
+                })
             }
         }
         let reads = Arc::new(AtomicUsize::new(0));
         let resets = Arc::new(AtomicUsize::new(0));
         let clock = FakeClock::at(1_000);
-        let mut system = System::new(Source { reads: reads.clone(), resets: resets.clone() }, clock.clone());
+        let mut system = System::new(
+            Source {
+                reads: reads.clone(),
+                resets: resets.clone(),
+            },
+            clock.clone(),
+        );
         assert!(system.step().is_none());
         system.show();
         let snapshot = system.step().unwrap().1;

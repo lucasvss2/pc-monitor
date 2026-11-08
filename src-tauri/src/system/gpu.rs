@@ -75,7 +75,9 @@ impl EngineSample {
 pub fn utilization(adapter: u64, samples: &[EngineSample]) -> GpuReading {
     let mut engines = BTreeMap::new();
     for sample in samples.iter().filter(|sample| sample.adapter == adapter) {
-        *engines.entry((sample.physical, sample.engine)).or_insert(0.0) += sample.value;
+        *engines
+            .entry((sample.physical, sample.engine))
+            .or_insert(0.0) += sample.value;
     }
     engines
         .into_values()
@@ -90,15 +92,15 @@ mod tests {
 
     #[test]
     fn aggregates_processes_per_engine_without_mixing_adapters_or_nodes() {
-        let input: serde_json::Value = serde_json::from_str(include_str!(
-            "../../fixtures/system/gpu-engines.json"
-        ))
-        .unwrap();
+        let input: serde_json::Value =
+            serde_json::from_str(include_str!("../../fixtures/system/gpu-engines.json")).unwrap();
         let samples: Vec<_> = input["samples"]
             .as_array()
             .unwrap()
             .iter()
-            .filter_map(|row| EngineSample::parse(row["instance"].as_str()?, row["value"].as_f64()?))
+            .filter_map(|row| {
+                EngineSample::parse(row["instance"].as_str()?, row["value"].as_f64()?)
+            })
             .collect();
         assert_eq!(utilization(1, &samples), GpuReading::Ready(70.2));
         assert_eq!(utilization(2, &samples), GpuReading::Ready(22.0));

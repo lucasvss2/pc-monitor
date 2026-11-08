@@ -28,9 +28,15 @@ impl Readings for SystemReadings {
     }
 
     fn graphics(&self) -> Option<crate::system::Graphics> {
-        Some(self.graphics.lock().map(|mut reader| reader.read()).unwrap_or(
-            crate::system::Graphics { devices: Vec::new(), failed: true },
-        ))
+        Some(
+            self.graphics
+                .lock()
+                .map(|mut reader| reader.read())
+                .unwrap_or(crate::system::Graphics {
+                    devices: Vec::new(),
+                    failed: true,
+                }),
+        )
     }
     fn cpu(&self) -> Result<Jiffies, ()> {
         let (mut idle, mut kernel, mut user) = Default::default();
