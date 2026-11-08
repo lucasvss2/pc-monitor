@@ -33,6 +33,8 @@
   let nextModeChange = Promise.resolve(true);
   let civil = $state<number | null>(null);
   let clockTick = $state(Date.now());
+  const clockText = $derived(civil === null ? "—" : formatPanelClock(civil));
+  const [clockTime, clockDate] = $derived(clockText.split(" · "));
 
   /** First opening: Settings shows the welcome until a section is chosen or the user goes back to the panel. */
   let welcome = $state(false);
@@ -417,8 +419,10 @@
     {/if}
   </div>
   <div class="panel-clock" role="group" aria-label={t.header.clock}>
-    <time>{civil === null ? "—" : formatPanelClock(civil)}</time>
-    <span>{t.header.systemTime}</span>
+    <time aria-label={clockText}>
+      <span class="clock-time">{clockTime}</span><span class="clock-separator">{" · "}</span><span class="clock-date">{clockDate}</span>
+    </time>
+    <span class="clock-source">{t.header.systemTime}</span>
   </div>
   <OperationsStrip {snapshots} ready={presented && appearanceRestored && nativeVisible && pageVisible} />
 </div>
@@ -456,13 +460,18 @@
   .window-error { color: var(--warn); font-size: .9em; }
   .panel-clock { display: flex; flex: none; justify-content: flex-end; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding-top: 4px; }
   .panel-clock time { font-variant-numeric: tabular-nums; font-family: monospace; font-weight: 600; }
-  .panel-clock span { font-size: .85em; color: var(--muted); }
-  .compact .panel-clock { justify-content: center; }
-  .compact .panel-clock time { font-size: 1.16em; }
+  .clock-source { font-size: .85em; color: var(--muted); }
+  .compact .panel-clock { flex: 1 0 100px; min-height: 100px; container-type: size; flex-direction: column; justify-content: center; align-items: center; gap: 6px; padding: 8px 0; }
+  .compact .panel-clock time { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; line-height: 1; }
+  .compact .clock-time { font-size: clamp(26px, min(16cqw, 42cqh), 88px); }
+  .compact .clock-date { font-size: clamp(16px, min(8cqw, 22cqh), 40px); }
+  .compact .clock-separator { display: none; }
+  .compact .clock-source { font-size: 11px; }
   .compact .utility { gap: 6px; }
   .compact .settings { width: 32px; height: 28px; justify-content: center; }
   .compact .control-label { display: none; }
   .workspace { position: relative; flex: 1; min-height: 0; }
+  .compact .workspace { flex: 0 1 auto; }
   .scroller { height: 100%; overflow: auto; }
   .scroller.covered { visibility: hidden; }
   /* The grid takes the whole Panel height: no empty strip at the bottom of the screen. */

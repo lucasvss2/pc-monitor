@@ -97,7 +97,7 @@ describe("Compact panel", () => {
     } });
     const user = userEvent.setup();
     const clock = await screen.findByRole("group", { name: "Relógio do Painel" });
-    await screen.findByText("00:00:08 · 05/11/2026");
+    await screen.findByLabelText("00:00:08 · 05/11/2026");
     await user.click(await screen.findByRole("button", { name: "Manter no topo" }));
     await user.click(screen.getByRole("button", { name: "Reduzir Painel" }));
     expect(await screen.findByRole("button", { name: "Expandir Painel" })).toBeInTheDocument();
