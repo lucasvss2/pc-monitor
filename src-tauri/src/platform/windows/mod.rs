@@ -8,6 +8,7 @@ mod protocol;
 mod session;
 mod startup;
 mod system;
+mod gpu;
 pub use codex_sessions::CodexRollouts;
 pub use credentials::NativeKeyring;
 pub use hooks::endpoint as hook_endpoint;

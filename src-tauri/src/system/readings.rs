@@ -10,6 +10,11 @@ use crate::ports::Files;
 use std::io;
 
 pub trait Readings: Send {
+    fn reset_graphics(&self) {}
+    #[cfg(any(windows, test))]
+    fn graphics(&self) -> Option<super::Graphics> {
+        None
+    }
     fn cpu(&self) -> Result<Jiffies, ()>;
     fn memory(&self) -> Result<(Memory, Option<Memory>), ()>;
     fn disks(&self) -> Result<Vec<Disk>, ()>;

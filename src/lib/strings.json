@@ -117,7 +117,14 @@
     "temperatureNoSensor": "Temperatura · sem sensor",
     "temperatureUnsupported": "Temperatura · coleta indisponível no Windows",
     "storageUnavailable": "Armazenamento · leitura indisponível",
-    "batteryUnavailable": "Bateria · leitura indisponível"
+    "batteryUnavailable": "Bateria · leitura indisponível",
+    "gpus": "GPUs",
+    "gpuUsage": "Uso",
+    "gpuTemperature": "Temperatura da GPU",
+    "gpuUnavailable": "Indisponível",
+    "gpuFailed": "Falha na leitura",
+    "graphicsFailed": "Não foi possível consultar as GPUs",
+    "noGpus": "Nenhuma GPU disponível"
   },
   "network": {
     "good": "Boa",

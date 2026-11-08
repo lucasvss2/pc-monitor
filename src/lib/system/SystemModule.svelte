@@ -96,6 +96,34 @@
       </div>
     </div>
 
+    {#if data.graphics}
+      <div class="gpus" role="group" aria-label={t.system.gpus}>
+        {#if data.graphics.failed}
+          <small>{t.system.graphicsFailed}</small>
+        {:else if data.graphics.devices.length === 0}
+          <small>{t.system.noGpus}</small>
+        {:else}
+          {#each data.graphics.devices as gpu (gpu.label)}
+            <section class="gpu" aria-label={gpu.label}>
+              <h3>{gpu.label}</h3>
+              <div class="gpu-values">
+                <div role="group" aria-label={`${gpu.label} · ${t.system.gpuUsage}`}>
+                  {#if gpu.usage.state === "ready"}<b class="num">{Math.round(gpu.usage.value)}%</b>
+                  {:else}<small>{gpu.usage.state === "measuring" ? t.system.measuring : gpu.usage.state === "failed" ? t.system.gpuFailed : t.system.gpuUnavailable}</small>{/if}
+                  <small>{t.system.gpuUsage}</small>
+                </div>
+                <div role="group" aria-label={`${gpu.label} · ${t.system.gpuTemperature}`}>
+                  {#if gpu.temperature.state === "ready"}<b class="num">{celsius.format(gpu.temperature.value)}°C</b>
+                  {:else}<small>{gpu.temperature.state === "failed" ? t.system.gpuFailed : t.system.gpuUnavailable}</small>{/if}
+                  <small>{t.system.gpuTemperature}</small>
+                </div>
+              </div>
+            </section>
+          {/each}
+        {/if}
+      </div>
+    {/if}
+
     {#each meters as m (m.name)}
       {@const value = percent(m.used, m.total)}
       {#if m.missing}
@@ -139,6 +167,12 @@
   .system-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .system-top > div > small { display: block; }
   .temperature { text-align: right; }
+  .gpus { display: grid; gap: 6px; margin-top: 10px; }
+  .gpu { border-top: 1px solid var(--line); padding-top: 5px; }
+  .gpu h3 { font-size: .95em; font-weight: 500; margin-bottom: 4px; }
+  .gpu-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .gpu-values small { display: block; overflow-wrap: anywhere; }
+  .gpu-values b { font-size: 1.3em; font-weight: 500; }
   strong { display: block; font-size: 2.8em; font-weight: 400; line-height: 1.15; }
   strong small { font-size: .35em; margin-left: 3px; }
   .temperature strong { font-size: 2.3em; }

@@ -26,6 +26,33 @@ function renderLater(snapshot: Snapshot, elapsed: number) {
 }
 
 describe("System module", () => {
+  it("keeps each GPU's usage and temperature together and distinguishes unavailable readings", () => {
+    const data = structuredClone(notebook.data) as SystemData;
+    data.graphics = { failed: false, devices: [
+      { label: "GPU 0 · AMD", usage: { state: "ready", value: 0 }, temperature: { state: "unavailable" } },
+      { label: "GPU 1 · NVIDIA", usage: { state: "ready", value: 54.2 }, temperature: { state: "ready", value: 43.5 } },
+    ] };
+    render(SystemModule, { data, updatedAt: notebook.updatedAt });
+    expect(group("GPU 0 · AMD · Uso")).toHaveTextContent("0%");
+    expect(group("GPU 0 · AMD · Temperatura da GPU")).toHaveTextContent("Indisponível");
+    expect(group("GPU 0 · AMD · Temperatura da GPU")).not.toHaveTextContent("°C");
+    expect(group("GPU 1 · NVIDIA · Uso")).toHaveTextContent("54%");
+    expect(group("GPU 1 · NVIDIA · Temperatura da GPU")).toHaveTextContent("43,5°C");
+    expect(group("CPU")).toHaveTextContent("2%");
+  });
+
+  it("explains GPU warm-up and failure while leaving CPU and memory available", () => {
+    const data = structuredClone(notebook.data) as SystemData;
+    data.graphics = { failed: false, devices: [
+      { label: "GPU 0 · NVIDIA", usage: { state: "measuring" }, temperature: { state: "failed" } },
+    ] };
+    render(SystemModule, { data, updatedAt: notebook.updatedAt });
+    expect(group("GPU 0 · NVIDIA · Uso")).toHaveTextContent("Medindo…");
+    expect(group("GPU 0 · NVIDIA · Uso")).not.toHaveTextContent("0%");
+    expect(group("GPU 0 · NVIDIA · Temperatura da GPU")).toHaveTextContent("Falha na leitura");
+    expect(meter("RAM")).toBeInTheDocument();
+  });
+
   it("shows B's instruments from a notebook: CPU, temperature, RAM, swap, root disk and battery", () => {
     renderSnapshot(notebook as Snapshot);
 

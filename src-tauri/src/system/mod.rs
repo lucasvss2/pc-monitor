@@ -2,6 +2,10 @@
 
 pub(crate) mod battery;
 mod readings;
+#[cfg(any(windows, test))]
+pub(crate) mod gpu;
+#[cfg(any(windows, test))]
+pub(crate) use gpu::Graphics;
 
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
@@ -32,6 +36,9 @@ const HISTORY_POINTS: usize = 30;
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemData {
+    #[cfg(any(windows, test))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub graphics: Option<Graphics>,
     pub cpu: Cpu,
     pub ram: Memory,
     pub swap: Option<Memory>,
@@ -105,6 +112,7 @@ impl<S: Readings, R: Clock> System<S, R> {
             return;
         }
         self.visible = true;
+        self.source.reset_graphics();
         self.jiffies = None;
         self.usage = None;
         self.history.clear();
@@ -181,6 +189,8 @@ impl<S: Readings, R: Clock> System<S, R> {
             unavailable_metrics.push(Metric::Storage);
         }
         let data = SystemData {
+            #[cfg(any(windows, test))]
+            graphics: self.source.graphics(),
             cpu: Cpu {
                 usage: self.usage,
                 history: self.history.iter().copied().collect(),
@@ -239,7 +249,7 @@ impl Collector {
                 UPowerDbus::connect(),
             );
             #[cfg(windows)]
-            let source = crate::platform::SystemReadings;
+            let source = crate::platform::SystemReadings::default();
             let mut system = System::new(source, SystemClock);
             loop {
                 let event = match system.deadline() {
@@ -313,6 +323,49 @@ mod tests {
 
     const GIB: u64 = 1024 * 1024 * 1024;
     const KIB: u64 = 1024;
+
+    #[test]
+    fn graphics_use_the_existing_io_port_and_reset_on_resume() {
+        use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+        struct Source {
+            reads: Arc<AtomicUsize>,
+            resets: Arc<AtomicUsize>,
+        }
+        impl Readings for Source {
+            fn cpu(&self) -> Result<Jiffies, ()> { Err(()) }
+            fn memory(&self) -> Result<(Memory, Option<Memory>), ()> {
+                Ok((Memory { used: 1, total: 2 }, None))
+            }
+            fn disks(&self) -> Result<Vec<Disk>, ()> { Ok(Vec::new()) }
+            fn battery(&self) -> Result<Option<Battery>, ()> { Ok(None) }
+            fn reset_graphics(&self) { self.resets.fetch_add(1, Ordering::SeqCst); }
+            fn graphics(&self) -> Option<Graphics> {
+                self.reads.fetch_add(1, Ordering::SeqCst);
+                Some(Graphics { failed: false, devices: vec![gpu::Gpu {
+                    label: "GPU 0 · NVIDIA".into(),
+                    usage: gpu::GpuReading::Measuring,
+                    temperature: gpu::GpuReading::Unavailable,
+                }] })
+            }
+        }
+        let reads = Arc::new(AtomicUsize::new(0));
+        let resets = Arc::new(AtomicUsize::new(0));
+        let clock = FakeClock::at(1_000);
+        let mut system = System::new(Source { reads: reads.clone(), resets: resets.clone() }, clock.clone());
+        assert!(system.step().is_none());
+        system.show();
+        let snapshot = system.step().unwrap().1;
+        assert!(snapshot.graphics.is_some());
+        assert_eq!(snapshot.ram.total, 2);
+        assert!(system.step().is_none());
+        system.sleep(true);
+        clock.advance(10_000);
+        assert!(system.step().is_none());
+        assert_eq!(reads.load(Ordering::SeqCst), 1);
+        system.sleep(false);
+        assert!(system.step().is_some());
+        assert_eq!(resets.load(Ordering::SeqCst), 2);
+    }
 
     struct Scenario {
         root: FakeRoot,

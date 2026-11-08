@@ -15,9 +15,23 @@ use crate::system::{
     Disk, Jiffies, Memory, Metric, Readings,
 };
 
-pub struct SystemReadings;
+#[derive(Default)]
+pub struct SystemReadings {
+    graphics: std::sync::Mutex<super::gpu::GraphicsReader>,
+}
 
 impl Readings for SystemReadings {
+    fn reset_graphics(&self) {
+        if let Ok(mut graphics) = self.graphics.lock() {
+            graphics.reset();
+        }
+    }
+
+    fn graphics(&self) -> Option<crate::system::Graphics> {
+        Some(self.graphics.lock().map(|mut reader| reader.read()).unwrap_or(
+            crate::system::Graphics { devices: Vec::new(), failed: true },
+        ))
+    }
     fn cpu(&self) -> Result<Jiffies, ()> {
         let (mut idle, mut kernel, mut user) = Default::default();
         unsafe { GetSystemTimes(Some(&mut idle), Some(&mut kernel), Some(&mut user)) }
@@ -125,7 +139,7 @@ mod tests {
 
     #[test]
     fn native_system_reads_cpu_ram_and_fixed_storage() {
-        let source = SystemReadings;
+        let source = SystemReadings::default();
         assert!(source.cpu().is_ok());
         let (ram, swap) = source.memory().unwrap();
         assert!(ram.total > 0 && ram.used <= ram.total);

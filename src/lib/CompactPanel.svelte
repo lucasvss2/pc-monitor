@@ -105,6 +105,10 @@
         {#if system}
           {#if system.cpu.usage !== null}<span class="num">CPU {Math.round(system.cpu.usage)}%</span>{/if}
           {#if system.ram.total > 0}<small>RAM {Math.round(system.ram.used / system.ram.total * 100)}%</small>{/if}
+          {#each system.graphics?.devices ?? [] as gpu (gpu.label)}
+            <small>{gpu.label.split(" · ")[0]} {gpu.usage.state === "ready" ? `${Math.round(gpu.usage.value)}%` : "—"}{#if gpu.temperature.state === "ready"} · {Math.round(gpu.temperature.value)}°C{/if}</small>
+          {/each}
+          {#if system.graphics?.failed}<small>{t.system.graphicsFailed}</small>{/if}
           {#if now - (snapshots.system?.updatedAt ?? now) > 10_000}<small>{t.header.oldReading}</small>{/if}
         {:else}<small>{t.header.noData}</small>{/if}
       </button>

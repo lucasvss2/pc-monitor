@@ -1,0 +1,9 @@
+{
+  "samples": [
+    { "instance": "pid_101_luid_0x00000000_0x00000001_phys_0_eng_0_engtype_3D", "value": 40.0 },
+    { "instance": "pid_102_luid_0x00000000_0x00000001_phys_0_eng_0_engtype_3D", "value": 15.5 },
+    { "instance": "pid_103_luid_0x00000000_0x00000001_phys_0_eng_1_engtype_VideoDecode", "value": 70.2 },
+    { "instance": "pid_104_luid_0x00000000_0x00000001_phys_1_eng_1_engtype_VideoDecode", "value": 10.0 },
+    { "instance": "pid_105_luid_0x00000000_0x00000002_phys_0_eng_0_engtype_3D", "value": 22.0 }
+  ]
+}

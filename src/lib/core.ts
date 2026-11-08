@@ -41,6 +41,7 @@ export interface Disk {
 
 /** System snapshot data, including warning decisions made by the core. */
 export interface SystemData {
+  graphics?: { devices: Gpu[]; failed: boolean };
   unavailableMetrics?: ("temperature" | "swap" | "storage" | "battery")[];
   cpu: {
     /** Percentage; null until two samples exist. */
@@ -59,6 +60,9 @@ export interface SystemData {
     warning: boolean;
   } | null;
 }
+
+export type GpuReading = { state: "ready"; value: number } | { state: "measuring" | "unavailable" | "failed" };
+export interface Gpu { label: string; usage: GpuReading; temperature: GpuReading }
 
 export type Theme = "dark" | "light" | "system";
 export type SystemTheme = "dark" | "light";
