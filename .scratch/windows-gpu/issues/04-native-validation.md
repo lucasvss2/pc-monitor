@@ -1,6 +1,6 @@
 # Validação gráfica GPU Windows
 
-Status: ready-for-human
+Status: resolved
 Assignee: Codex / usuário
 Parent: ../spec.md
 
@@ -27,4 +27,4 @@ O reduzido mostrou uso separado de NVIDIA e AMD, temperatura NVIDIA e relógio a
 
 A Âncora inicial foi restaurada pela UI após a navegação de teste. Modo, fixação, aparência e preferências de notificações foram comparados e preservados. A cópia foi promovida para `%LOCALAPPDATA%/Programs/kvojps-monitor-portable/439393f/`, reaberta e conferida novamente; Jira retomou sua conexão sem novo token. O hash do portátil anterior permaneceu igual. A pasta temporária do teste, ZIP, EXE duplicado e referências privadas das preferências foram removidos após conferir ausência de processos/ativação apontando para ela. A cópia estável em uso e o portátil anterior foram preservados.
 
-Não foram versionadas capturas reais ou métricas/identificadores do perfil. O aceite visual final foi apresentado ao usuário e permanece pendente de sua resposta; os testes físicos de suspensão pertencem à pendência global já registrada, com retomada coberta neste incremento pelas portas injetadas.
+Não foram versionadas capturas reais ou métricas/identificadores do perfil. Em 08/11/2026, o usuário confirmou que o uso das duas GPUs e a temperatura NVIDIA estavam corretos e legíveis nos modos completo e reduzido e aprovou explicitamente a apresentação. Os critérios deste ticket estão concluídos; os testes físicos de suspensão pertencem à pendência global já registrada, com retomada coberta neste incremento pelas portas injetadas.
