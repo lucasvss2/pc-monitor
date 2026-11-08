@@ -220,7 +220,7 @@ impl Counters {
                 continue;
             }
             let address = item.name as usize;
-            if address < start || address >= end || address % 2 != 0 {
+            if address < start || address >= end || !address.is_multiple_of(2) {
                 continue;
             }
             let name = unsafe { std::slice::from_raw_parts(item.name, (end - address) / 2) };

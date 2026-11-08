@@ -4,6 +4,8 @@ Indicador de bandeja para acompanhar limites de uso de IA, sessões de agentes, 
 
 A escolha Trello/Jira está implementada nesta árvore de desenvolvimento; não implica disponibilidade nos pacotes já publicados. O [guia de Tarefas](docs/tarefas.md) explica conexão, troca de fonte e limitações.
 
+No Windows 11 x64, consulte o [guia de uso e adaptações](docs/windows.md): portátil/instalador por usuário, credenciais, agentes, métricas, limites de sensores e execução sem assinatura própria ou administrador.
+
 ![Painel do kvojps-monitor aberto no app Tauri nativo, com dados de demonstração sanitizados](docs/assets/painel-fixtures.png)
 
 *Captura do app Tauri em execução com snapshots de demonstração. Os dados são exemplos; esta imagem não é uma captura da versão distribuída.*

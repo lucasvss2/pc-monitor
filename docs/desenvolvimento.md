@@ -161,6 +161,8 @@ O build gera o EXE portátil em `src-tauri/target/release/` e o instalador em `s
 
 O artefato `windows-foundation-experimental-unsigned` contém o EXE portátil da mesma revisão em ZIP. Ele permite distribuir o aplicativo sem executar o NSIS e requer WebView2 já disponível. Seu uso continua sujeito ao Controle Inteligente de Aplicativos e às demais políticas da máquina; não é garantia de execução. O diagnóstico e os limites dessa alternativa estão em [ZIP portátil](windows-validacao.md#zip-portátil-sem-assinatura).
 
+O [guia Windows](windows.md) reúne as adaptações de Indicador, Painel, relógio, cofre, CLIs, hooks/notificações e métricas. O incremento GPU usa DXGI/PDH e a NVML já instalada, pela mesma porta `Readings` de Sistema; não usa shell, SDK redistribuído ou instalação de driver. O resultado da busca por CPU AMD e os limites de sensores estão no guia e nas pesquisas vinculadas. O [tracker GPU](../.scratch/windows-gpu/spec.md) separa implementação, documentação e aceite nativo.
+
 Sem cofre nativo real, o app recusa salvar credenciais. A prova explícita do cofre usa somente uma entrada sintética isolada e a remove ao terminar:
 
 ```powershell

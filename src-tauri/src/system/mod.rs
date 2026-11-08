@@ -132,13 +132,16 @@ impl<S: Readings, R: Clock> System<S, R> {
 
     fn sleep(&mut self, sleeping: bool) {
         self.sleeping = sleeping;
-        if !sleeping {
+        if sleeping {
+            self.source.reset_graphics();
+        } else {
             self.resume();
         }
     }
 
     pub fn hide(&mut self) {
         self.visible = false;
+        self.source.reset_graphics();
         #[cfg(any(target_os = "linux", test))]
         {
             self.last = None;
@@ -384,7 +387,12 @@ mod tests {
         assert_eq!(reads.load(Ordering::SeqCst), 1);
         system.sleep(false);
         assert!(system.step().is_some());
-        assert_eq!(resets.load(Ordering::SeqCst), 2);
+        assert_eq!(resets.load(Ordering::SeqCst), 4);
+        system.hide();
+        clock.advance(10_000);
+        assert!(system.step().is_none());
+        assert_eq!(reads.load(Ordering::SeqCst), 2);
+        assert_eq!(resets.load(Ordering::SeqCst), 5);
     }
 
     struct Scenario {

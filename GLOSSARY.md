@@ -36,6 +36,12 @@ _Avoid_: Módulo Relógio, horário da fonte de dados
 Uma área do Painel dedicada a um conjunto de informações (IA, Agentes, GitHub, Tarefas, Rede, Sistema).
 _Avoid_: Widget, aba, card
 
+**GPU**:
+O processador gráfico acompanhado individualmente pelo Módulo Sistema. Uma máquina pode ter várias GPUs, cada uma com uso e sensores próprios.
+
+**Uso da GPU**:
+A atividade do motor mais ocupado de uma GPU no intervalo de medição. Motores podem trabalhar em paralelo; o uso apresentado não é a soma de todos os motores.
+
 **Tarefas**:
 O Módulo que apresenta o quadro e os itens do Provedor de tarefas ativo, identificado como Trello ou Jira.
 _Avoid_: Módulo Trello, Módulo Jira
