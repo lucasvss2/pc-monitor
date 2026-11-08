@@ -1,6 +1,6 @@
 # Coleta e apresentação GPU
 
-Status: ready-for-agent
+Status: ready-for-human
 Assignee: Codex
 Parent: ../spec.md
 
@@ -17,3 +17,5 @@ Parent: ../spec.md
 ## Comments
 
 Implementação iniciada em 08/11/2026 na branch `codex/windows-gpu-metrics`.
+
+A revisão `439393f` passou integralmente na [CI nativa](https://github.com/lucasvss2/pc-monitor/actions/runs/42499337778) Ubuntu/Windows, incluindo 399 testes UI, testes de agregação/privacidade/ciclo de vida, build e instalação/remoção por usuário. A fonte usa as DLLs já instaladas; o teste local sem GUI do EXE sem assinatura terminou com código zero e sem saída, sem elevação e com Controle Inteligente ativo. Abertura e aceite gráficos do coletor real continuam no ticket 04.

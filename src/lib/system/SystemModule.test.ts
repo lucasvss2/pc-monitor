@@ -9,6 +9,7 @@ import noSensor from "./fixtures/no-sensor.json";
 import missing from "./fixtures/missing.json";
 import warning from "./fixtures/warning.json";
 import starting from "./fixtures/starting.json";
+import windowsGpu from "./fixtures/windows-gpu.json";
 
 function renderSnapshot(snapshot: Snapshot) {
   render(SystemModule, { data: snapshot.data as SystemData, updatedAt: snapshot.updatedAt });
@@ -27,18 +28,13 @@ function renderLater(snapshot: Snapshot, elapsed: number) {
 
 describe("System module", () => {
   it("keeps each GPU's usage and temperature together and distinguishes unavailable readings", () => {
-    const data = structuredClone(notebook.data) as SystemData;
-    data.graphics = { failed: false, devices: [
-      { label: "GPU 0 · AMD", usage: { state: "ready", value: 0 }, temperature: { state: "unavailable" } },
-      { label: "GPU 1 · NVIDIA", usage: { state: "ready", value: 54.2 }, temperature: { state: "ready", value: 43.5 } },
-    ] };
-    render(SystemModule, { data, updatedAt: notebook.updatedAt });
+    renderSnapshot(windowsGpu as Snapshot);
     expect(group("GPU 0 · AMD · Uso")).toHaveTextContent("0%");
     expect(group("GPU 0 · AMD · Temperatura da GPU")).toHaveTextContent("Indisponível");
     expect(group("GPU 0 · AMD · Temperatura da GPU")).not.toHaveTextContent("°C");
     expect(group("GPU 1 · NVIDIA · Uso")).toHaveTextContent("54%");
     expect(group("GPU 1 · NVIDIA · Temperatura da GPU")).toHaveTextContent("43,5°C");
-    expect(group("CPU")).toHaveTextContent("2%");
+    expect(group("CPU")).toHaveTextContent("21%");
   });
 
   it("explains GPU warm-up and failure while leaving CPU and memory available", () => {

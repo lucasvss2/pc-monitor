@@ -46,6 +46,23 @@ No aceite final dessa rodada, o usuário confirmou fechar pelo X e reabrir pelo 
 
 ## Aceite em sessão gráfica
 
+### GPU no Módulo Sistema
+
+O incremento e suas fontes estão no [guia Windows](windows.md#uso-e-temperatura-das-gpus); tarefas separadas em [GPU Windows](../.scratch/windows-gpu/spec.md). A leitura local sem elevação confirmou PDH com nomes de contador em inglês, duas amostras e array formatado válidos; DXGI/D3DKMT retornaram associação PCI, e a consulta NVIDIA pelo mesmo endereço foi aceita. Os resultados publicados são somente categorias/flags. A sondagem AMD ADL pelos índices reais retornados pela API não indicou suporte ao sensor CPU 32. Nenhum driver/serviço foi instalado, nem proteção alterada.
+
+Prévia da UI em 08/11/2026: dados inteiramente sintéticos de `windows-gpu.json`, duas GPUs com capacidades diferentes, Sistema completo em 1100 × 700 px e reduzido em 420 × 620 e 360 × 480 px. Sem rolagem horizontal; na janela menor os resumos rolaram e o relógio conservou 100 px de altura. Arquivos/servidor temporários da prévia são removidos ao encerrar. A prévia não comprova leitura do coletor nativo.
+
+A candidata `439393f` passou na [CI 42499337778](https://github.com/lucasvss2/pc-monitor/actions/runs/42499337778) em ambos os sistemas, incluindo 399 testes UI, testes Rust e build/instalação/remoção por usuário. Seu EXE sem assinatura passou na sondagem local silenciosa sem elevação, com Controle Inteligente ativo. O [ticket de validação GPU](../.scratch/windows-gpu/issues/04-native-validation.md) registra hash e estado do aceite; a abertura gráfica nativa não é substituída por esses resultados. O diff de código/docs/fixtures e as identidades dos commits foram revisados conforme a política de sanitização; nenhuma captura real do perfil foi adicionada ao Git.
+
+Roteiro na build identificada, sem elevação e com proteções preservadas:
+
+1. Conferir uso por GPU no Sistema completo. A leitura inicial pode ser Medindo; falha/ausência deve ser explícita e não publicar zero artificial.
+2. Conferir temperatura somente no adaptador NVIDIA correspondente. Comparar com `nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits`, se já instalado. Diferenças de amostragem/arredondamento são esperadas; não comparar uso do motor Windows com uma definição diferente de utilização NVIDIA como se fossem iguais.
+3. Confirmar que a temperatura CPU permanece indisponível quando o sensor AMD não é suportado. RAM/CPU/discos continuam legíveis se uma GPU falhar.
+4. Alternar completo/reduzido e abrir Sistema a partir do resumo. Conferir os dois adaptadores e o relógio, incluindo janela pequena sem corte de controles.
+5. Fechar pelo X, aguardar e reabrir pelo Indicador. O coletor pausa oculto e descarta a referência GPU ao reabrir. Suspensão física continua um cenário separado dos testes injetados de retomada.
+6. Conferir instância e hash corretos, política ativa, preferências e conexão Jira preservadas. Não versionar capturas reais do perfil. Remover somente cópias e ferramentas de teste sem referências em uso; preservar o portátil anterior.
+
 Registrar versão de SO/app, cenário, resultado e limitação sem valores privados ou capturas brutas. Usar sessões/projetos de exemplo e seguir [sanitização](agents/sanitizacao.md).
 
 1. Clique esquerdo na bandeja abre/ativa o Painel existente sem outra instância; direito abre menu. Pela revisão de foco aprovada durante o aceite de Tarefas, clicar fora mantém o Painel aberto, inclusive nas Configurações. X/Escape fecham o Painel preservando o Indicador; Escape resolve primeiro um diálogo interno. Início automático é opcional e silencioso.
