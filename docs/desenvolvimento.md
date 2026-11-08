@@ -159,6 +159,8 @@ npm run tauri -- build --bundles nsis
 
 O build gera o EXE portátil em `src-tauri/target/release/` e o instalador em `src-tauri/target/release/bundle/nsis/`. Use `--no-bundle` para compilar apenas o portátil. A CI oferece o instalador experimental sem assinatura no artefato `windows-x64-installer-unsigned`. O instalador usa o perfil do usuário e baixa o bootstrapper da Microsoft quando o WebView2 está ausente. Consulte a [validação Windows](windows-validacao.md#instalador-exe-por-usuário) para instalar e remover.
 
+O artefato `windows-foundation-experimental-unsigned` contém o EXE portátil da mesma revisão em ZIP. Ele permite distribuir o aplicativo sem executar o NSIS e requer WebView2 já disponível. Seu uso continua sujeito ao Controle Inteligente de Aplicativos e às demais políticas da máquina; não é garantia de execução. O diagnóstico e os limites dessa alternativa estão em [ZIP portátil](windows-validacao.md#zip-portátil-sem-assinatura).
+
 Sem cofre nativo real, o app recusa salvar credenciais. A prova explícita do cofre usa somente uma entrada sintética isolada e a remove ao terminar:
 
 ```powershell
