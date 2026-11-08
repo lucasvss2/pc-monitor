@@ -54,6 +54,8 @@ Prévia da UI em 08/11/2026: dados inteiramente sintéticos de `windows-gpu.json
 
 A candidata `439393f` passou na [CI 42499337778](https://github.com/lucasvss2/pc-monitor/actions/runs/42499337778) em ambos os sistemas, incluindo 399 testes UI, testes Rust e build/instalação/remoção por usuário. Seu EXE sem assinatura passou na sondagem local silenciosa sem elevação, com Controle Inteligente ativo. O [ticket de validação GPU](../.scratch/windows-gpu/issues/04-native-validation.md) registra hash e estado do aceite; a abertura gráfica nativa não é substituída por esses resultados. O diff de código/docs/fixtures e as identidades dos commits foram revisados conforme a política de sanitização; nenhuma captura real do perfil foi adicionada ao Git.
 
+Após autorização, a janela nativa confirmou a revisão por hash, uso separado das GPUs NVIDIA/AMD e temperatura NVIDIA compatível com a ferramenta do driver dentro de 3 °C de tolerância de amostragem/arredondamento. As temperaturas da GPU AMD e da CPU permaneceram indisponíveis. Foram conferidos completo/reduzido, relógio e novas amostras após fechar/reabrir. O processo do monitor foi comprovado não elevado, com Controle Inteligente `On` e instância única. A cópia estável foi reaberta; Âncora, modo, fixação, aparência e notificações foram preservados, além de Jira conectado e hash do portátil anterior intacto. Temporários e ferramentas foram removidos. O aceite visual final e os cenários físicos globais continuam separados, conforme o ticket.
+
 Roteiro na build identificada, sem elevação e com proteções preservadas:
 
 1. Conferir uso por GPU no Sistema completo. A leitura inicial pode ser Medindo; falha/ausência deve ser explícita e não publicar zero artificial.
